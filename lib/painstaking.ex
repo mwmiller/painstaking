@@ -4,15 +4,16 @@ defmodule PainStaking do
   def kelly_size(bankroll, estimate, offered) do
     prob = extract_value(estimate, :prob)
     win = extract_value(offered, :uk)
-    Float.round(bankroll * kelly_fraction(prob, win), 2)
+    amount = Float.round(bankroll * kelly_fraction(prob, win), 2)
+    {amount != 0.0, amount}
   end
 
   def arb_size(max_outlay, mutually_exclusives) do
     if arb_exists(mutually_exclusives) do
       sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
-      {max_outlay - Enum.sum(sizes) |> Float.round(2), sizes}
+      {true, sizes, max_outlay - Enum.sum(sizes) |> Float.round(2)}
     else
-      {0.0, List.duplicate(0.00, Enum.count(mutually_exclusives))}
+      {false, List.duplicate(0.00, Enum.count(mutually_exclusives)), 0.0}
     end
   end
 
