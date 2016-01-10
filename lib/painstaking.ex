@@ -4,6 +4,20 @@ defmodule PainStaking do
   Calculate stakes in advantage betting situations
   """
 
+  @typedoc """
+  A keyword list with a single pair.
+  The key should be one of the atoms for a supported odds format from Exoddic.
+  The value should be a supported way for expressing the odds for that key.
+
+  Examples:
+
+  - Probability: `[prob: 0.50]`
+  - Moneyline:   `[us: "+120"]`
+  - Decimal:     `[eu: 2.25]`
+  - Traditional: `[uk: "4/1"]`
+
+  """
+  @type wager_price :: [atom: number|String.t]
   @doc """
   Determine the amount to stake on a single advantage situation based on the
   estimated edge and the Kelly Criterion
@@ -12,16 +26,9 @@ defmodule PainStaking do
   `estimate` is the estimated actual odds on the event occurring
   `offered`  is the odds offered by the counter-party
 
-  `estimate` and `odds` should be entered as atoms and numbers which can be
-  interpreted by the `Exoddic` module. Examples include:
-
-  `[prob: 0.50]` as a probability
-  `[us: "+120"]` as moneyline-style odds
-  `[eu: 2.25]`   as decimal-style odds
-
   Returns {whether an edge exists, amount to wager}
   """
-  @spec kelly_size(number, [atom: number], [atom: number]) :: {boolean, float}
+  @spec kelly_size(number, wager_price, wager_price) :: {boolean, float}
   def kelly_size(bankroll, estimate, offered) do
     prob = extract_value(estimate, :prob)
     win = extract_value(offered, :uk)
@@ -36,14 +43,14 @@ defmodule PainStaking do
   The smaller the arbitrage, the closer your outlay will be to this number.
 
   `mutually_exclusives` is a list of mutually exclusive outcomes and the odds
-  offered on each.  Each element of the list should be an atom-number keyword list
-  which can be interpreted by `Exoddic`. For example, `[us: "-120"]`
+  offered on each.
 
   Returns {whether an arb exists, [stake on each outcome], expected profit}
 
-  The expected profit may suffer from small rounding errors.
+  The payouts may not all be exactly `max_outlay` because of rounding to the
+  nearest cent.  This may cause a slight variation in the expected profit.
   """
-  @spec arb_size(number, [[atom: number]]) :: {boolean, [float], float}
+  @spec arb_size(number, [wager_price]) :: {boolean, [float], float}
   def arb_size(max_outlay, mutually_exclusives) do
     if arb_exists(mutually_exclusives) do
       sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
