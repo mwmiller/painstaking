@@ -18,22 +18,29 @@ defmodule PainStaking do
 
   """
   @type wager_price :: [atom: number|String.t]
+  @typedoc """
+  A tuple which represents a supposed advantage wagering situation.
+
+  The first element is the estimate of the fair (or actual) odds of winning.
+  The second element is the odds offered by the counter-party to the wager.
+  """
+  @type edge :: {wager_price, wager_price}
   @doc """
   Determine the amount to stake on a single advantage situation based on the
   estimated edge and the Kelly Criterion
 
   `bankroll` is the total amount available for wagering
-  `estimate` is the estimated actual odds on the event occurring
-  `offered`  is the odds offered by the counter-party
+  `advantage` is a description of the situation as an `edge`
 
-  Returns {whether an edge exists, amount to wager}
+  Successful return: {:ok, amount to wager}
   """
-  @spec kelly_size(number, wager_price, wager_price) :: {boolean, float}
-  def kelly_size(bankroll, estimate, offered) do
-    prob = extract_value(estimate, :prob)
+  @spec kelly_size(number, edge) :: {:ok, float} | {:error, String.t}
+  def kelly_size(bankroll, advantage) do
+    {fair, offered} = advantage
+    prob = extract_value(fair, :prob)
     win = extract_value(offered, :uk)
     amount = Float.round(bankroll * kelly_fraction(prob, win), 2)
-    {amount != 0.0, amount}
+    if amount != 0.0, do: {:ok, amount}, else: {:error, "This is not an advantage situation."}
   end
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
@@ -45,18 +52,18 @@ defmodule PainStaking do
   `mutually_exclusives` is a list of mutually exclusive outcomes and the odds
   offered on each.
 
-  Returns {whether an arb exists, [stake on each outcome], expected profit}
+  Successful return: {:ok, [stake on each outcome], expected profit}
 
   The payouts may not all be exactly `max_outlay` because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
   """
-  @spec arb_size(number, [wager_price]) :: {boolean, [float], float}
+  @spec arb_size(number, [wager_price]) :: {:ok, [float], float} | {:error, String.t}
   def arb_size(max_outlay, mutually_exclusives) do
     if arb_exists(mutually_exclusives) do
       sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
-      {true, sizes, max_outlay - Enum.sum(sizes) |> Float.round(2)}
+      {:ok, sizes, max_outlay - Enum.sum(sizes) |> Float.round(2)}
     else
-      {false, List.duplicate(0.00, Enum.count(mutually_exclusives)), 0.0}
+      {:error, "No arbitrage exists for these events."}
     end
   end
 
