@@ -34,13 +34,17 @@ defmodule PainStaking do
 
   Successful return: {:ok, amount to wager}
   """
-  @spec kelly_size(number, edge) :: {:ok, float} | {:error, String.t}
-  def kelly_size(bankroll, advantage) do
-    {fair, offered} = advantage
+  @spec kelly_size(number, [edge]) :: [float]
+  def kelly_size(bankroll, advantages) do
+    kelly_loop(bankroll, advantages, [])
+  end
+  defp kelly_loop(_, [], acc), do: acc
+  defp kelly_loop(bankroll, remaining, acc) do
+    [{fair, offered}|rest] = remaining
     prob = extract_value(fair, :prob)
     win = extract_value(offered, :uk)
     amount = Float.round(bankroll * kelly_fraction(prob, win), 2)
-    if amount != 0.0, do: {:ok, amount}, else: {:error, "This is not an advantage situation."}
+    kelly_loop(bankroll - amount, rest, Enum.into([amount], acc))
   end
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
