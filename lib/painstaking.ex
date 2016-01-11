@@ -1,5 +1,7 @@
 defmodule PainStaking do
   require Exoddic
+  use Bitwise
+
   @moduledoc """
   Calculate stakes in advantage betting situations
   """
@@ -36,15 +38,13 @@ defmodule PainStaking do
   """
   @spec kelly_size(number, [edge]) :: [float]
   def kelly_size(bankroll, advantages) do
-    kelly_loop(bankroll, advantages, [])
+    kelly_fractions_loop(advantages, []) |> Enum.map(fn(x) -> Float.round(x*bankroll,2) end)
   end
-  defp kelly_loop(_, [], acc), do: acc
-  defp kelly_loop(bankroll, remaining, acc) do
-    [{fair, offered}|rest] = remaining
+  defp kelly_fractions_loop([], acc), do: acc
+  defp kelly_fractions_loop([{fair,offered}|rest], acc) do
     prob = extract_value(fair, :prob)
     win = extract_value(offered, :uk)
-    amount = Float.round(bankroll * kelly_fraction(prob, win), 2)
-    kelly_loop(bankroll - amount, rest, Enum.into([amount], acc))
+    kelly_fractions_loop(rest, Enum.into([kelly_fraction(prob, win)], acc))
   end
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
@@ -84,6 +84,42 @@ defmodule PainStaking do
     # This must, then, be bounded at 0.  The bounding at 1 is
     # somewhat redundant, but makes things clear if we get bad input
     Enum.max([0.0,Enum.min([1.0,(prob * (payoff + 1) - 1)/payoff])]);
+  end
+
+  # This seems way more complex than it ought to be.
+  @spec edge_cdf([edge]) :: [{[float], float}]
+  def edge_cdf(advantages) do
+     payoffs = advantages |> Enum.map(fn({p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
+     last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
+     0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
+  end
+  defp pick_combo(_, [], acc), do: acc
+  defp pick_combo(n,[{v,p}|t],{vals,j}) do
+    {newval, newprob} = if ((n >>> Enum.count(vals) &&& 1)) != 0, do: {v,p}, else: {0,1-p}
+    pick_combo(n,t,{Enum.into([newval], vals), j * newprob})
+  end
+  defp map_prob([], acc, _), do: acc
+  defp map_prob([{l,p}|t], acc, j) do
+    limit = j+p
+    map_prob(t, Enum.into([{l, limit}], acc), limit)
+  end
+
+  def sample_ev(cdf, fracs, iters) do
+      total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
+      total /iters
+  end
+
+  defp gather_results(_, 0, acc), do: acc
+  defp gather_results(cdf, n, acc) do gather_results(cdf, n-1, Enum.into([sample_result(cdf)], acc))
+  end
+
+  defp add_row([],[],acc), do: acc
+  defp add_row([h|t],[f|r], acc), do: add_row(t,r, h*f+acc)
+
+  defp sample_result(cdf) do
+    pick = :random.uniform
+    {_, [{r,_}|_]} = cdf |> Enum.split_while(fn({_,plim}) -> pick > plim end)
+    r
   end
 
 end

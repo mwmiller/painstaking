@@ -10,9 +10,9 @@ defmodule PainStakingTest do
     assert PainStaking.kelly_size(15000, [no_edge]) == [0.00], "Recommend 0 bet for non-advantage situations"
     assert PainStaking.kelly_size(15000, [small_edge]) == [150.00], "Small bets for small edges"
     assert PainStaking.kelly_size(15000, [decent_edge])== [825.00], "Bet a bit with decent return"
-    assert PainStaking.kelly_size(15000, [small_edge, decent_edge]) == [150.00, 816.75], "Not treated as exactly simultaneous"
-    assert PainStaking.kelly_size(15000, [decent_edge, small_edge]) == [825.0, 141.75], "Which means order matters"
-    assert PainStaking.kelly_size(15000, [decent_edge, no_edge, small_edge]) == [825.0, 0.0, 141.75], "But skipping no-edge situations in the middle doesn't change much"
+    assert PainStaking.kelly_size(15000, [small_edge, decent_edge]) == [150.00, 825.0], "Not treated as exactly simultaneous"
+    assert PainStaking.kelly_size(15000, [decent_edge, small_edge]) == [825.0, 150.0], "Which means order matters"
+    assert PainStaking.kelly_size(15000, [decent_edge, no_edge, small_edge]) == [825.0, 0.0, 150.0], "But skipping no-edge situations in the middle doesn't change much"
   end
 
   test "simple arb_size" do
