@@ -88,7 +88,7 @@ defmodule PainStaking do
 
   # This seems way more complex than it ought to be.
   @spec edge_cdf([edge]) :: [{[float], float}]
-  def edge_cdf(advantages) do
+  defp edge_cdf(advantages) do
      payoffs = advantages |> Enum.map(fn({p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
      last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
      0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
@@ -104,9 +104,16 @@ defmodule PainStaking do
     map_prob(t, Enum.into([{l, limit}], acc), limit)
   end
 
-  def sample_ev(cdf, fracs, iters) do
+  def sim_win_for(bankroll, edges) do
+    wagers = kelly_size(bankroll, edges)
+    cdf    = edge_cdf(edges)
+    ev     = sample_ev(cdf, wagers, 1000) # Would maybe let us pass in the iteration count if this was ging to stick around
+    ev - Enum.sum(wagers) |> Float.round(2)
+  end
+
+  defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
-      total /iters
+      total / iters
   end
 
   defp gather_results(_, 0, acc), do: acc
