@@ -28,13 +28,17 @@ defmodule PainStaking do
   """
   @type edge :: {wager_price, wager_price}
   @doc """
-  Determine the amount to stake on a single advantage situation based on the
+  Determine the amount to stake on advantage situations based on the
   estimated edge and the Kelly Criterion
 
   `bankroll` is the total amount available for wagering
   `advantage` is a description of the situation as an `edge`
 
-  Successful return: {:ok, amount to wager}
+  Returns a list of amounts to wager on each.  Note that these are not properly
+  scaled as simultaneous events. In the single edge situation, the results will be
+  correct.
+
+  Improvements to this algorithm are coming soon.
   """
   @spec kelly_size(number, [edge]) :: [float]
   def kelly_size(bankroll, advantages) do
@@ -104,10 +108,21 @@ defmodule PainStaking do
     map_prob(t, Enum.into([{l, limit}], acc), limit)
   end
 
-  def sim_win_for(bankroll, edges) do
+  @doc """
+  Simulate a repeated edge situation and see the average amount won.
+
+  `bankroll` is the starting bankroll when the bets are placed
+  `edges` is a list of simultaneous events
+  `iter` is the number of simulation iterations to run
+
+  Returns the average win, assuming wagers are staked according
+  to the `kelly_size`
+  """
+  @spec sim_win_for(number, [edge], non_neg_integer) :: float
+  def sim_win_for(bankroll, edges, iter) do
     wagers = kelly_size(bankroll, edges)
     cdf    = edge_cdf(edges)
-    ev     = sample_ev(cdf, wagers, 1000) # Would maybe let us pass in the iteration count if this was ging to stick around
+    ev     = sample_ev(cdf, wagers, iter)
     ev - Enum.sum(wagers) |> Float.round(2)
   end
 

@@ -18,6 +18,6 @@ PainStaking.arb_size(1000, [[us: "+100"], [eu: 2.00]])
 PainStaking.arb_size(1000, [[us: "+100"], [eu: 2.10]])
 {:ok, [500.0, 476.19], 23.81} # Arb available, bet on each, net 23.81 regardless of outcome
 
-PainStaking.sim_win_for(10,[{[prob: 0.80], [us: -110]}])
+PainStaking.sim_win_for(10,[{[prob: 0.80], [us: -110]}], 100)
 3.0 # Or something close, depending on how the sim works out.
 ```
