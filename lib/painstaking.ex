@@ -23,10 +23,11 @@ defmodule PainStaking do
   @typedoc """
   A tuple which represents a supposed advantage wagering situation.
 
-  The first element is the estimate of the fair (or actual) odds of winning.
-  The second element is the odds offered by the counter-party to the wager.
+  The first element is an edge description
+  The second element is the estimate of the fair (or actual) odds of winning.
+  The third element is the odds offered by the counter-party to the wager.
   """
-  @type edge :: {wager_price, wager_price}
+  @type edge :: {String.t, wager_price, wager_price}
   @doc """
   Determine the amount to stake on advantage situations based on the
   estimated edge and the Kelly Criterion
@@ -34,21 +35,21 @@ defmodule PainStaking do
   `bankroll` is the total amount available for wagering
   `advantage` is a description of the situation as an `edge`
 
-  Returns a list of amounts to wager on each.  Note that these are not properly
+  Returns {:ok, list of amounts to wager on each}.  Note that these are not properly
   scaled as simultaneous events. In the single edge situation, the results will be
   correct.
 
   Improvements to this algorithm are coming soon.
   """
-  @spec kelly_size(number, [edge]) :: [float]
+  @spec kelly_size(number, [edge]) :: {:ok, [float]}
   def kelly_size(bankroll, advantages) do
-    kelly_fractions_loop(advantages, []) |> Enum.map(fn(x) -> Float.round(x*bankroll,2) end)
+    {:ok, kelly_fractions_loop(advantages, []) |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)}
   end
   defp kelly_fractions_loop([], acc), do: acc
-  defp kelly_fractions_loop([{fair,offered}|rest], acc) do
+  defp kelly_fractions_loop([{desc,fair,offered}|rest], acc) do
     prob = extract_value(fair, :prob)
     win = extract_value(offered, :uk)
-    kelly_fractions_loop(rest, Enum.into([kelly_fraction(prob, win)], acc))
+    kelly_fractions_loop(rest, Enum.into([{desc,kelly_fraction(prob, win)}], acc))
   end
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
@@ -93,7 +94,7 @@ defmodule PainStaking do
   # This seems way more complex than it ought to be.
   @spec edge_cdf([edge]) :: [{[float], float}]
   defp edge_cdf(advantages) do
-     payoffs = advantages |> Enum.map(fn({p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
+     payoffs = advantages |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
      last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
      0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
   end
@@ -120,10 +121,10 @@ defmodule PainStaking do
   """
   @spec sim_win_for(number, [edge], non_neg_integer) :: float
   def sim_win_for(bankroll, edges, iter) do
-    wagers = kelly_size(bankroll, edges)
-    cdf    = edge_cdf(edges)
-    ev     = sample_ev(cdf, wagers, iter)
-    ev - Enum.sum(wagers) |> Float.round(2)
+    {:ok, wagers} = kelly_size(bankroll, edges)
+    cdf           = edge_cdf(edges)
+    ev            = sample_ev(cdf, wagers, iter)
+    ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
   end
 
   defp sample_ev(cdf, fracs, iters) do
@@ -136,7 +137,7 @@ defmodule PainStaking do
   end
 
   defp add_row([],[],acc), do: acc
-  defp add_row([h|t],[f|r], acc), do: add_row(t,r, h*f+acc)
+  defp add_row([h|t],[{_,f}|r], acc), do: add_row(t,r, h*f+acc)
 
   defp sample_result(cdf) do
     pick = :random.uniform
