@@ -37,18 +37,20 @@ defmodule PainStaking do
   estimated edge and the Kelly Criterion
 
   `bankroll` is the total amount available for wagering
-  `advantage` is a description of the situation as an `edge`
+  `advantages` is a description of the situations as `edge`s.
 
-  Returns {:ok, list of amounts to wager on each}.  Note that these are not properly
-  scaled as simultaneous events. In the single edge situation, the results will be
-  correct.
-
-  Improvements to this algorithm are coming soon.
+  Returns {:ok, list of amounts to wager on each}.
+  The list will be sorted in expectation order.
   """
   @spec kelly_size(number, [edge]) :: {:ok, [tagged_number]}
   def kelly_size(bankroll, advantages) do
-    {:ok, kelly_fractions_loop(advantages, []) |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)}
+    sizes = advantages
+            |> Enum.sort_by(&PainStaking.ev/1)
+            |> kelly_fractions_loop([])
+            |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)
+    {:ok, sizes}
   end
+
   defp kelly_fractions_loop([], acc), do: Enum.reverse acc
   defp kelly_fractions_loop([{desc,fair,offered}|rest], acc) do
     prob = extract_value(fair, :prob)
@@ -125,14 +127,15 @@ defmodule PainStaking do
   """
   @spec sim_win_for(number, [edge], non_neg_integer) :: float
   def sim_win_for(bankroll, edges, iter) do
-    {:ok, wagers} = kelly_size(bankroll, edges)
-    cdf           = edge_cdf(edges)
+    sedges        = edges |> Enum.sort_by(&PainStaking.ev/1)
+    {:ok, wagers} = kelly_size(bankroll, sedges)
+    cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
   end
 
   @doc """
-  Get the mathematical expectations for a list of supposed edges
+  The mathematical expectations for a list of supposed edges
 
   An `edge` which turns out to be a losing proposition will have an EV below 1.
 
@@ -140,8 +143,9 @@ defmodule PainStaking do
   """
   @spec ev_per_unit([edge]) :: {:ok, [tagged_number]}
   def ev_per_unit(edges), do: {:ok, ev_loop(edges,[])}
-  def ev_loop([], acc), do: Enum.reverse acc
-  def ev_loop([{d,p,o}|t], acc), do: ev_loop(t, [{d, extract_value(p, :prob) * extract_value(o, :eu)}|acc])
+  defp ev_loop([], acc), do: Enum.reverse acc
+  defp ev_loop([{d,p,o}|t], acc), do: ev_loop(t, [{d, ev({d,p,o})}|acc])
+  def ev({_,p,o}), do: extract_value(p, :prob) * extract_value(o, :eu)
 
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
