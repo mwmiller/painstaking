@@ -131,6 +131,13 @@ defmodule PainStaking do
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
   end
 
+  @doc """
+  Get the mathematical expectations for a list of supposed edges
+
+  An `edge` which turns out to be a losing proposition will have an EV below 1.
+
+  The return values will be tagged with the provided edge descriptions
+  """
   @spec ev_per_unit([edge]) :: {:ok, [tagged_number]}
   def ev_per_unit(edges), do: {:ok, ev_loop(edges,[])}
   def ev_loop([], acc), do: Enum.reverse acc

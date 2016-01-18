@@ -34,4 +34,11 @@ defmodule PainStakingTest do
     assert PainStaking.sim_win_for(100, [always_win, no_edge], 100) == 90.91, "Same when you add one which cannot win"
     assert PainStaking.sim_win_for(100, [always_win, no_edge, small_edge], 100) <= 91.91, "Might win a bit more if you add in a small edge"
   end
+
+  test "simple ev_per_unit" do
+    neg_ev = {"no edge", [prob: "0.50"], [us: -110]}
+    pos_ev = {"small edge", [prob: "0.55"], [us: -110]}
+
+    assert PainStaking.ev_per_unit([neg_ev, pos_ev]) == {:ok, [{"no edge", 0.9545454545454545}, {"small edge", 1.05}]}, "Difference from the unit is the expected win"
+  end
 end
