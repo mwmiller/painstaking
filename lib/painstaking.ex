@@ -50,7 +50,7 @@ defmodule PainStaking do
       {:error, "Cannot handle multiple independent events, yet."}
     else
       opt_set = advantages
-              |> Enum.sort_by(&PainStaking.ev/1)
+              |> Enum.sort(&(ev(&1) < ev(&2)))
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
@@ -73,8 +73,8 @@ defmodule PainStaking do
 
   # The "reserve rate" above which any additions to the set must be
   # in order to be included in the optimal set
-  def rr([]), do: 1.0 # First must merely be positive expectation
-  def rr(included) do
+  defp rr([]), do: 1.0 # First must merely be positive expectation
+  defp rr(included) do
 
     probs = included |> Enum.map(fn({_,p,_}) -> extract_value(p,:prob) end) |> Enum.sum
     payoffs = included |> Enum.map(fn({_,_,o}) -> 1/extract_value(o,:eu) end) |> Enum.sum
@@ -148,7 +148,7 @@ defmodule PainStaking do
   """
   @spec sim_win_for(number, [edge], non_neg_integer) :: float
   def sim_win_for(bankroll, edges, iter) do
-    sedges        = edges |> Enum.sort_by(&PainStaking.ev/1)
+    sedges        = edges |> Enum.sort(&(ev(&1) < ev(&2)))
     {:ok, wagers} = kelly_size(bankroll, sedges, false)
     cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
@@ -166,7 +166,7 @@ defmodule PainStaking do
   def ev_per_unit(edges), do: {:ok, ev_loop(edges,[])}
   defp ev_loop([], acc), do: Enum.reverse acc
   defp ev_loop([{d,p,o}|t], acc), do: ev_loop(t, [{d, ev({d,p,o})}|acc])
-  def ev({_,p,o}), do: extract_value(p, :prob) * extract_value(o, :eu)
+  defp ev({_,p,o}), do: extract_value(p, :prob) * extract_value(o, :eu)
 
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
