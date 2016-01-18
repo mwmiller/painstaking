@@ -38,17 +38,23 @@ defmodule PainStaking do
 
   `bankroll` is the total amount available for wagering
   `advantages` is a description of the situations as `edge`s.
+  `independent` determines whether the edges are treated as independent
+  (multiple simultaneous events) or dependent ("many horses")
 
   Returns {:ok, list of amounts to wager on each}.
   The list will be sorted in expectation order.
   """
-  @spec kelly_size(number, [edge]) :: {:ok, [tagged_number]}
-  def kelly_size(bankroll, advantages) do
-    sizes = advantages
-            |> Enum.sort_by(&PainStaking.ev/1)
-            |> kelly_fractions_loop([])
-            |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)
-    {:ok, sizes}
+  @spec kelly_size(number, [edge], boolean) :: {:ok, [tagged_number]}
+  def kelly_size(bankroll, advantages, independent) do
+    if Enum.count(advantages) > 1 and independent do
+      {:error, "Cannot handle multiple independent events, yet."}
+    else
+      sizes = advantages
+              |> Enum.sort_by(&PainStaking.ev/1)
+              |> kelly_fractions_loop([])
+              |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)
+      {:ok, sizes}
+    end
   end
 
   defp kelly_fractions_loop([], acc), do: Enum.reverse acc
@@ -128,7 +134,7 @@ defmodule PainStaking do
   @spec sim_win_for(number, [edge], non_neg_integer) :: float
   def sim_win_for(bankroll, edges, iter) do
     sedges        = edges |> Enum.sort_by(&PainStaking.ev/1)
-    {:ok, wagers} = kelly_size(bankroll, sedges)
+    {:ok, wagers} = kelly_size(bankroll, sedges, false)
     cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)

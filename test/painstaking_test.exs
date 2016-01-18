@@ -7,10 +7,11 @@ defmodule PainStakingTest do
     small_edge  = {"small edge", [prob: 0.55],   [us: -120]}
     decent_edge = {"decent edge",[prob: 0.55],   [us: "-110"]}
 
-    assert PainStaking.kelly_size(15000, [no_edge]) == {:ok, [{"no edge", 0.0}]}, "Recommend 0 bet for non-advantage situations"
-    assert PainStaking.kelly_size(15000, [small_edge]) == {:ok, [{"small edge", 150.0}]}, "Small bets for small edges"
-    assert PainStaking.kelly_size(15000, [decent_edge])== {:ok, [{"decent edge", 825.0}]}, "Bet a bit with decent return"
-    assert PainStaking.kelly_size(15000, [small_edge, decent_edge]) == {:ok, [{"small edge", 150.0}, {"decent edge", 825.0}]}, "Not treated as exactly simultaneous"
+    assert PainStaking.kelly_size(15000, [no_edge], true) == {:ok, [{"no edge", 0.0}]}, "Recommend 0 bet for non-advantage situations"
+    assert PainStaking.kelly_size(15000, [small_edge], false) == {:ok, [{"small edge", 150.0}]}, "Small bets for small edges"
+    assert PainStaking.kelly_size(15000, [decent_edge], true)== {:ok, [{"decent edge", 825.0}]}, "Bet a bit with decent return"
+    assert PainStaking.kelly_size(15000, [small_edge, decent_edge], false) == {:ok, [{"small edge", 150.0}, {"decent edge", 825.0}]}, "Not treated as exactly simultaneous"
+    assert PainStaking.kelly_size(15000, [small_edge, decent_edge], true) == {:error, "Cannot handle multiple independent events, yet."}, "Dependent events first"
   end
 
   test "simple arb_size" do
