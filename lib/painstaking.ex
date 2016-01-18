@@ -41,7 +41,7 @@ defmodule PainStaking do
 
   Improvements to this algorithm are coming soon.
   """
-  @spec kelly_size(number, [edge]) :: {:ok, [float]}
+  @spec kelly_size(number, [edge]) :: {:ok, [{String.t, float}]}
   def kelly_size(bankroll, advantages) do
     {:ok, kelly_fractions_loop(advantages, []) |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)}
   end

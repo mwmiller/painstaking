@@ -31,5 +31,7 @@ defmodule PainStakingTest do
     assert PainStaking.sim_win_for(100, [small_edge], 100) <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
     assert PainStaking.sim_win_for(100, [always_win], 1) == 90.91, "If the result is known, you get full value."
     assert PainStaking.sim_win_for(100, [always_win], 100) == 90.91, "Even when you repeat it many times"
+    assert PainStaking.sim_win_for(100, [always_win, no_edge], 100) == 90.91, "Same when you add one which cannot win"
+    assert PainStaking.sim_win_for(100, [always_win, no_edge, small_edge], 100) <= 91.91, "Might win a bit more if you add in a small edge"
   end
 end
