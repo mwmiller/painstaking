@@ -49,20 +49,41 @@ defmodule PainStaking do
     if Enum.count(advantages) > 1 and independent do
       {:error, "Cannot handle multiple independent events, yet."}
     else
-      sizes = advantages
+      opt_set = advantages
               |> Enum.sort_by(&PainStaking.ev/1)
-              |> kelly_fractions_loop([])
-              |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)
-      {:ok, sizes}
+              |> pick_set_loop([])
+      if Enum.count(opt_set) != 0 do
+        rr = rr(opt_set)
+        sizes = opt_set |> Enum.map(fn({d,p,o}) -> {d, Float.round(kelly_fraction(rr,{d,p,o})*bankroll,2)} end)
+        {:ok, sizes}
+      else
+        {:error, "No suitable postive expectation edges found."}
+      end
     end
   end
 
-  defp kelly_fractions_loop([], acc), do: Enum.reverse acc
-  defp kelly_fractions_loop([{desc,fair,offered}|rest], acc) do
-    prob = extract_value(fair, :prob)
-    win = extract_value(offered, :uk)
-    kelly_fractions_loop(rest, [{desc,kelly_fraction(prob, win)}|acc])
+  defp pick_set_loop([], acc), do: Enum.reverse acc
+  defp pick_set_loop([this|rest], acc) do
+    if ev(this) > rr(acc) do
+        pick_set_loop(rest, [this|acc])
+    else
+        pick_set_loop([], acc)
+    end
   end
+
+  # The "reserve rate" above which any additions to the set must be
+  # in order to be included in the optimal set
+  def rr([]), do: 1.0 # First must merely be positive expectation
+  def rr(included) do
+
+    probs = included |> Enum.map(fn({_,p,_}) -> extract_value(p,:prob) end) |> Enum.sum
+    payoffs = included |> Enum.map(fn({_,_,o}) -> 1/extract_value(o,:eu) end) |> Enum.sum
+
+    (1 - probs) / (1 - payoffs)
+  end
+
+  defp kelly_fraction(rr, {_,p,o}), do: extract_value(p, :prob) - (rr/extract_value(o, :eu))
+
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
   an arbitrage situation.
@@ -96,12 +117,6 @@ defmodule PainStaking do
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_value(:eu))) |> Float.round(2)
   defp arb_exists(mutually_exclusives), do: Enum.count(mutually_exclusives) > 1 and mutually_exclusives |> Enum.map(fn(x) -> extract_value(x,:prob) end) |> Enum.sum < 1
 
-  defp kelly_fraction(prob,payoff) do
-    # Presume we cannot get the other side at the same odds
-    # This must, then, be bounded at 0.  The bounding at 1 is
-    # somewhat redundant, but makes things clear if we get bad input
-    Enum.max([0.0,Enum.min([1.0,(prob * (payoff + 1) - 1)/payoff])]);
-  end
 
   # This seems way more complex than it ought to be.
   @spec edge_cdf([edge]) :: [{[float], float}]

@@ -6,12 +6,13 @@ defmodule PainStakingTest do
     no_edge     = {"no edge",    [prob: "0.50"], [us: -110]}
     small_edge  = {"small edge", [prob: 0.55],   [us: -120]}
     decent_edge = {"decent edge",[prob: 0.55],   [us: "-110"]}
+    exclusive_edge = {"x with decent", [prob: 0.25], [us: "+325"]}
 
-    assert PainStaking.kelly_size(15000, [no_edge], true) == {:ok, [{"no edge", 0.0}]}, "Recommend 0 bet for non-advantage situations"
+    assert PainStaking.kelly_size(15000, [no_edge], true) == {:error, "No suitable postive expectation edges found."}, "No recommended bet for non-advantage situations"
     assert PainStaking.kelly_size(15000, [small_edge], false) == {:ok, [{"small edge", 150.0}]}, "Small bets for small edges"
     assert PainStaking.kelly_size(15000, [decent_edge], true)== {:ok, [{"decent edge", 825.0}]}, "Bet a bit with decent return"
-    assert PainStaking.kelly_size(15000, [small_edge, decent_edge], false) == {:ok, [{"small edge", 150.0}, {"decent edge", 825.0}]}, "Not treated as exactly simultaneous"
-    assert PainStaking.kelly_size(15000, [small_edge, decent_edge], true) == {:error, "Cannot handle multiple independent events, yet."}, "Dependent events first"
+    assert PainStaking.kelly_size(15000, [exclusive_edge, decent_edge], false) == {:ok, [{"decent edge", 1726.74}, {"x with decent", 819.77}]}, "Exclusive simultaneous 'many horses'"
+    assert PainStaking.kelly_size(15000, [exclusive_edge, decent_edge], true) == {:error, "Cannot handle multiple independent events, yet."}, "Dependent events first"
   end
 
   test "simple arb_size" do
@@ -23,17 +24,14 @@ defmodule PainStakingTest do
   end
 
   test "simple sim_win_for" do
-    no_edge = {"no edge", [prob: "0.50"], [us: -110]}
     small_edge = {"small edge", [prob: "0.55"], [us: -110]}
     always_win = {"always win", [prob: 1], [us: -110]}
 
-    assert PainStaking.sim_win_for(100, [no_edge], 1) == 0.00, "Single wager which kelly does not recommend making does not make money"
-    assert PainStaking.sim_win_for(100, [no_edge], 100) == 0.00, "Even if you do it 100 times"
     assert PainStaking.sim_win_for(100, [small_edge], 100) <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
     assert PainStaking.sim_win_for(100, [always_win], 1) == 90.91, "If the result is known, you get full value."
     assert PainStaking.sim_win_for(100, [always_win], 100) == 90.91, "Even when you repeat it many times"
-    assert PainStaking.sim_win_for(100, [always_win, no_edge], 100) == 90.91, "Same when you add one which cannot win"
-    assert PainStaking.sim_win_for(100, [always_win, no_edge, small_edge], 100) <= 91.91, "Might win a bit more if you add in a small edge"
+    assert PainStaking.sim_win_for(100, [always_win], 100) == 90.91, "Same when you add one which cannot win"
+    assert PainStaking.sim_win_for(100, [always_win, small_edge], 100) <= 91.91, "Might win a bit more if you add in a small edge"
   end
 
   test "simple ev_per_unit" do

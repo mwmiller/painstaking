@@ -3,15 +3,16 @@
 Bet stake sizing in Elixir:
 
 - Kelly Criterion
+    - Currently multiple events must be mutually exclusive ("many horse")
 - Arbitrage
 
 ## Examples
 
 ```
-PainStaking.kelly_size(20000,[{[prob: 0.50], [us: -110]}])
-[0.0] # no edge, no bet
-PainStaking.kelly_size(20000,[{[prob: 0.50], [us: +101]}])
-[99.01]
+PainStaking.kelly_size(20000,[{"loser",[prob: 0.50], [us: -110]}], true)
+{:error, "No suitable postive expectation edges found."}
+PainStaking.kelly_size(20000,[{"winner",[prob: 0.50], [us: "+101"]}], true)
+{:ok, [{"winner", 99.01}]}
 
 PainStaking.arb_size(1000, [[us: "+100"], [eu: 2.00]])
 {:error, "No arbitrage exists for these events."} # No arb
