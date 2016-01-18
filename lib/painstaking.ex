@@ -28,6 +28,10 @@ defmodule PainStaking do
   The third element is the odds offered by the counter-party to the wager.
   """
   @type edge :: {String.t, wager_price, wager_price}
+  @typedoc """
+  A number tagged with a description to make collating results easier.
+  """
+  @type tagged_number :: {String.t, number}
   @doc """
   Determine the amount to stake on advantage situations based on the
   estimated edge and the Kelly Criterion
@@ -41,7 +45,7 @@ defmodule PainStaking do
 
   Improvements to this algorithm are coming soon.
   """
-  @spec kelly_size(number, [edge]) :: {:ok, [{String.t, float}]}
+  @spec kelly_size(number, [edge]) :: {:ok, [tagged_number]}
   def kelly_size(bankroll, advantages) do
     {:ok, kelly_fractions_loop(advantages, []) |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)}
   end
@@ -126,6 +130,11 @@ defmodule PainStaking do
     ev            = sample_ev(cdf, wagers, iter)
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
   end
+
+  @spec ev_per_unit([edge]) :: {:ok, [tagged_number]}
+  def ev_per_unit(edges), do: {:ok, ev_loop(edges,[])}
+  def ev_loop([], acc), do: Enum.reverse acc
+  def ev_loop([{d,p,o}|t], acc), do: ev_loop(t, [{d, extract_value(p, :prob) * extract_value(o, :eu)}|acc])
 
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
