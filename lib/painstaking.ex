@@ -45,11 +45,11 @@ defmodule PainStaking do
   def kelly_size(bankroll, advantages) do
     {:ok, kelly_fractions_loop(advantages, []) |> Enum.map(fn({d,x}) -> {d, Float.round(x*bankroll,2)} end)}
   end
-  defp kelly_fractions_loop([], acc), do: acc
+  defp kelly_fractions_loop([], acc), do: Enum.reverse acc
   defp kelly_fractions_loop([{desc,fair,offered}|rest], acc) do
     prob = extract_value(fair, :prob)
     win = extract_value(offered, :uk)
-    kelly_fractions_loop(rest, Enum.into([{desc,kelly_fraction(prob, win)}], acc))
+    kelly_fractions_loop(rest, [{desc,kelly_fraction(prob, win)}|acc])
   end
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
@@ -132,9 +132,8 @@ defmodule PainStaking do
       total / iters
   end
 
-  defp gather_results(_, 0, acc), do: acc
-  defp gather_results(cdf, n, acc) do gather_results(cdf, n-1, Enum.into([sample_result(cdf)], acc))
-  end
+  defp gather_results(_, 0, acc), do: Enum.reverse acc
+  defp gather_results(cdf, n, acc), do: gather_results(cdf, n-1, [sample_result(cdf)|acc])
 
   defp add_row([],[],acc), do: acc
   defp add_row([h|t],[{_,f}|r], acc), do: add_row(t,r, h*f+acc)
