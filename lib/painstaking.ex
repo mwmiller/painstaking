@@ -50,7 +50,7 @@ defmodule PainStaking do
       {:error, "Cannot handle multiple independent events, yet."}
     else
       opt_set = advantages
-              |> Enum.sort(&(ev(&1) < ev(&2)))
+              |> Enum.sort_by(fn(x) -> ev(x) end)
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
@@ -148,7 +148,7 @@ defmodule PainStaking do
   """
   @spec sim_win_for(number, [edge], non_neg_integer) :: float
   def sim_win_for(bankroll, edges, iter) do
-    sedges        = edges |> Enum.sort(&(ev(&1) < ev(&2)))
+    sedges        = edges |> Enum.sort_by(fn(x) -> ev(x) end)
     {:ok, wagers} = kelly_size(bankroll, sedges, false)
     cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
