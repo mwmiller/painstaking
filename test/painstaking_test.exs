@@ -2,17 +2,26 @@ defmodule PainStakingTest do
   use ExUnit.Case
   doctest PainStaking
 
-  test "simple kelly_size" do
-    no_edge     = {"no edge",    [prob: "0.50"], [us: -110]}
-    small_edge  = {"small edge", [prob: 0.55],   [us: -120]}
-    decent_edge = {"decent edge",[prob: 0.55],   [us: "-110"]}
-    exclusive_edge = {"x with decent", [prob: 0.25], [us: "+325"]}
+  test "single kelly_size" do
+    no_edge     = {"no edge",     [prob: "0.50"], [us: -110]}
+    small_edge  = {"small edge",  [prob: 0.55],   [us: -120]}
+    decent_edge = {"decent edge", [prob: 0.55],   [us: "-110"]}
 
-    assert PainStaking.kelly_size(15000, [no_edge], true) == {:error, "No suitable postive expectation edges found."}, "No recommended bet for non-advantage situations"
-    assert PainStaking.kelly_size(15000, [small_edge], false) == {:ok, [{"small edge", 150.0}]}, "Small bets for small edges"
-    assert PainStaking.kelly_size(15000, [decent_edge], true)== {:ok, [{"decent edge", 825.0}]}, "Bet a bit with decent return"
-    assert PainStaking.kelly_size(15000, [exclusive_edge, decent_edge], false) == {:ok, [{"decent edge", 1726.74}, {"x with decent", 819.77}]}, "Exclusive simultaneous 'many horses'"
-    assert PainStaking.kelly_size(15000, [exclusive_edge, decent_edge], true) == {:error, "Cannot handle multiple independent events, yet."}, "Dependent events first"
+    assert PainStaking.kelly_size(10000, [no_edge], true) == {:error, "No suitable positive expectation edges found."}, "No recommended bet for non-advantage situations"
+    assert PainStaking.kelly_size(10000, [small_edge], false) == {:ok, [{"small edge", 100.0}]}, "Small bets for small edges"
+    assert PainStaking.kelly_size(10000, [decent_edge], true)== {:ok, [{"decent edge", 550.0}]}, "Bet a bit with decent return"
+  end
+
+  test "many horses" do
+    chalk = {"chalk", [prob: 0.75], [uk: "3/5"]}
+    stalk = {"stalk", [prob: 0.20], [uk: "7/2"]}
+    dark  = {"dark", [prob: 0.04], [uk: "30/1"]}
+    glue  = {"glue", [prob: 0.01], [uk: "100/1"]}
+
+    assert PainStaking.kelly_size(10000, [chalk, stalk, dark, glue], false) == {:ok, [{"dark", 400.0}, {"chalk", 7500}, {"glue", 100.0}, {"stalk", 2000}]}, "stalking horse is included"
+    assert PainStaking.kelly_size(10000, [stalk], false) == {:error, "No suitable positive expectation edges found."}, "Even though it is negative EV when considered alone"
+    assert PainStaking.kelly_size(10000, [chalk, dark, glue], false) == {:ok, [{"dark", 206.17}, {"chalk", 3744.45}, {"glue", 40.51}]}, "Leaving it off wildly changes the results"
+    assert PainStaking.kelly_size(10000, [chalk, stalk, dark], false) == {:ok, [{"dark", 373.23}, {"chalk", 6981.41}, {"stalk", 1815.61}]}, "Where dropping a positive EV unlikely winner is less dramatic"
   end
 
   test "simple arb_size" do

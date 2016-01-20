@@ -50,14 +50,14 @@ defmodule PainStaking do
       {:error, "Cannot handle multiple independent events, yet."}
     else
       opt_set = advantages
-              |> Enum.sort_by(fn(x) -> ev(x) end)
+              |> Enum.sort_by(fn(x) -> ev(x) end, &>=/2)
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
         sizes = opt_set |> Enum.map(fn({d,p,o}) -> {d, Float.round(kelly_fraction(rr,{d,p,o})*bankroll,2)} end)
         {:ok, sizes}
       else
-        {:error, "No suitable postive expectation edges found."}
+        {:error, "No suitable positive expectation edges found."}
       end
     end
   end
