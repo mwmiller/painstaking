@@ -46,14 +46,14 @@ defmodule PainStaking do
   Returns {:ok, list of amounts to wager on each}.
   The list will be sorted in expectation order.
   """
-  @spec kelly_size([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
-  def kelly_size(advantages, opts \\ []) do
+  @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
+  def kelly(advantages, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
     if Enum.count(advantages) > 1 and independent do
       {:error, "Cannot handle multiple independent events, yet."}
     else
       opt_set = advantages
-              |> Enum.sort_by(fn(x) -> ev(x,1) end, &>=/2)
+              |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
@@ -71,7 +71,7 @@ defmodule PainStaking do
 
   defp pick_set_loop([], acc), do: Enum.reverse acc
   defp pick_set_loop([this|rest], acc) do
-    if ev(this,1) > rr(acc) do
+    if single_ev(this,1) > rr(acc) do
         pick_set_loop(rest, [this|acc])
     else
         pick_set_loop([], acc)
@@ -106,8 +106,8 @@ defmodule PainStaking do
   The payouts may not all be exactly the same because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
   """
-  @spec arb_size([wager_price], staking_options) :: {:ok, [float], float} | {:error, String.t}
-  def arb_size(mutually_exclusives, opts \\ []) do
+  @spec arb([wager_price], staking_options) :: {:ok, [float], float} | {:error, String.t}
+  def arb(mutually_exclusives, opts \\ []) do
     {max_outlay, independent} = extract_staking_options(opts)
     if arb_exists(mutually_exclusives) and not independent do
       sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
@@ -151,12 +151,12 @@ defmodule PainStaking do
   `iter` is the number of simulation iterations to run
 
   Returns the average win, assuming wagers are staked according
-  to the `kelly_size`
+  to the `kelly`
   """
-  @spec sim_win_for([edge], non_neg_integer, staking_options) :: float
-  def sim_win_for(edges, iter, opts \\ []) do
-    sedges        = edges |> Enum.sort_by(fn(x) -> ev(x,1) end, &>=/2)
-    {:ok, wagers} = kelly_size(sedges, opts)
+  @spec sim_win([edge], non_neg_integer, staking_options) :: float
+  def sim_win(edges, iter, opts \\ []) do
+    sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
+    {:ok, wagers} = kelly(sedges, opts)
     cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
@@ -169,14 +169,14 @@ defmodule PainStaking do
 
   The return values will be tagged with the provided edge descriptions
   """
-  @spec ev_for_each([edge], staking_options) :: {:ok, [tagged_number]}
-  def ev_for_each(edges, opts \\ []) do
+  @spec ev([edge], staking_options) :: {:ok, [tagged_number]}
+  def ev(edges, opts \\ []) do
     {mult, _ } = extract_staking_options(opts)
     {:ok, ev_loop(edges,mult,[])}
   end
   defp ev_loop([],_, acc), do: Enum.reverse acc
-  defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, ev({d,p,o},m)}|acc])
-  defp ev({_,p,o},m), do: m * extract_value(p, :prob) * extract_value(o, :eu)
+  defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
+  defp single_ev({_,p,o},m), do: m * extract_value(p, :prob) * extract_value(o, :eu)
 
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
