@@ -46,7 +46,7 @@ defmodule PainStaking do
   Returns {:ok, list of amounts to wager on each}.
   The list will be sorted in expectation order.
   """
-  @spec kelly_size([edge], staking_options) :: {:ok, [tagged_number]}
+  @spec kelly_size([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
   def kelly_size(advantages, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
     if Enum.count(advantages) > 1 and independent do
