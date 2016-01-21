@@ -32,25 +32,28 @@ defmodule PainStaking do
   A number tagged with a description to make collating results easier.
   """
   @type tagged_number :: {String.t, number}
+  @typedoc  """
+  A keyword list which configures optional parameters for staking calculators
+
+  - `bankroll` is the total amount available for wagering, defaults to `100`.
+  - `independent` chooses between mutually exclusive and independent simultaneous events, defaults to `false`
+  """
+  @type staking_options :: [bankroll: number, independent: boolean]
   @doc """
   Determine the amount to stake on advantage situations based on the
   estimated edge and the Kelly Criterion
 
-  `bankroll` is the total amount available for wagering
-  `advantages` is a description of the situations as `edge`s.
-  `independent` determines whether the edges are treated as independent
-  (multiple simultaneous events) or dependent ("many horses")
-
   Returns {:ok, list of amounts to wager on each}.
   The list will be sorted in expectation order.
   """
-  @spec kelly_size(number, [edge], boolean) :: {:ok, [tagged_number]}
-  def kelly_size(bankroll, advantages, independent) do
+  @spec kelly_size([edge], staking_options) :: {:ok, [tagged_number]}
+  def kelly_size(advantages, opts \\ []) do
+    {bankroll, independent} = extract_staking_options(opts)
     if Enum.count(advantages) > 1 and independent do
       {:error, "Cannot handle multiple independent events, yet."}
     else
       opt_set = advantages
-              |> Enum.sort_by(fn(x) -> ev(x) end, &>=/2)
+              |> Enum.sort_by(fn(x) -> ev(x,1) end, &>=/2)
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
@@ -62,9 +65,13 @@ defmodule PainStaking do
     end
   end
 
+  defp extract_staking_options(opts) do
+      {Keyword.get(opts, :bankroll, 100), Keyword.get(opts, :independent, false)}
+  end
+
   defp pick_set_loop([], acc), do: Enum.reverse acc
   defp pick_set_loop([this|rest], acc) do
-    if ev(this) > rr(acc) do
+    if ev(this,1) > rr(acc) do
         pick_set_loop(rest, [this|acc])
     else
         pick_set_loop([], acc)
@@ -88,20 +95,21 @@ defmodule PainStaking do
   Determine how much to bet on each of a set of mutually exclusive outcomes in
   an arbitrage situation.
 
-  `max_outlay` is the maximum available to stake on this set of outcomes.
-  The smaller the arbitrage, the closer your outlay will be to this number.
+  The optional `bankroll` can be used to set the maximum amount available to
+  bet on these outcomes.  The smaller the arbitrage, the closer your outlay will be to this number.
 
   `mutually_exclusives` is a list of mutually exclusive outcomes and the odds
   offered on each.
 
   Successful return: {:ok, [stake on each outcome], expected profit}
 
-  The payouts may not all be exactly `max_outlay` because of rounding to the
+  The payouts may not all be exactly the same because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
   """
-  @spec arb_size(number, [wager_price]) :: {:ok, [float], float} | {:error, String.t}
-  def arb_size(max_outlay, mutually_exclusives) do
-    if arb_exists(mutually_exclusives) do
+  @spec arb_size([wager_price], staking_options) :: {:ok, [float], float} | {:error, String.t}
+  def arb_size(mutually_exclusives, opts \\ []) do
+    {max_outlay, independent} = extract_staking_options(opts)
+    if arb_exists(mutually_exclusives) and not independent do
       sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
       {:ok, sizes, max_outlay - Enum.sum(sizes) |> Float.round(2)}
     else
@@ -139,17 +147,16 @@ defmodule PainStaking do
   @doc """
   Simulate a repeated edge situation and see the average amount won.
 
-  `bankroll` is the starting bankroll when the bets are placed
   `edges` is a list of simultaneous events
   `iter` is the number of simulation iterations to run
 
   Returns the average win, assuming wagers are staked according
   to the `kelly_size`
   """
-  @spec sim_win_for(number, [edge], non_neg_integer) :: float
-  def sim_win_for(bankroll, edges, iter) do
-    sedges        = edges |> Enum.sort_by(fn(x) -> ev(x) end)
-    {:ok, wagers} = kelly_size(bankroll, sedges, false)
+  @spec sim_win_for([edge], non_neg_integer, staking_options) :: float
+  def sim_win_for(edges, iter, opts \\ []) do
+    sedges        = edges |> Enum.sort_by(fn(x) -> ev(x,1) end, &>=/2)
+    {:ok, wagers} = kelly_size(sedges, opts)
     cdf           = edge_cdf(sedges)
     ev            = sample_ev(cdf, wagers, iter)
     ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
@@ -158,15 +165,18 @@ defmodule PainStaking do
   @doc """
   The mathematical expectations for a list of supposed edges
 
-  An `edge` which turns out to be a losing proposition will have an EV below 1.
+  A losing proposition will have an EV below the supplied `bankroll`
 
   The return values will be tagged with the provided edge descriptions
   """
-  @spec ev_per_unit([edge]) :: {:ok, [tagged_number]}
-  def ev_per_unit(edges), do: {:ok, ev_loop(edges,[])}
-  defp ev_loop([], acc), do: Enum.reverse acc
-  defp ev_loop([{d,p,o}|t], acc), do: ev_loop(t, [{d, ev({d,p,o})}|acc])
-  defp ev({_,p,o}), do: extract_value(p, :prob) * extract_value(o, :eu)
+  @spec ev_for_each([edge], staking_options) :: {:ok, [tagged_number]}
+  def ev_for_each(edges, opts \\ []) do
+    {mult, _ } = extract_staking_options(opts)
+    {:ok, ev_loop(edges,mult,[])}
+  end
+  defp ev_loop([],_, acc), do: Enum.reverse acc
+  defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, ev({d,p,o},m)}|acc])
+  defp ev({_,p,o},m), do: m * extract_value(p, :prob) * extract_value(o, :eu)
 
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
