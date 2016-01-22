@@ -47,12 +47,12 @@ defmodule PainStaking do
   The list will be sorted in expectation order.
   """
   @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
-  def kelly(advantages, opts \\ []) do
+  def kelly(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
-    if Enum.count(advantages) > 1 and independent do
+    if Enum.count(edges) > 1 and independent do
       {:error, "Cannot handle multiple independent events, yet."}
     else
-      opt_set = advantages
+      opt_set = edges
               |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
@@ -128,8 +128,8 @@ defmodule PainStaking do
 
   # This seems way more complex than it ought to be.
   @spec edge_cdf([edge]) :: [{[float], float}]
-  defp edge_cdf(advantages) do
-     payoffs = advantages |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
+  defp edge_cdf(edges) do
+     payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
      last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
      0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
   end
