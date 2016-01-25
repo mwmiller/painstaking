@@ -180,13 +180,18 @@ defmodule PainStaking do
   Returns the average win, assuming wagers are staked according
   to the `kelly`
   """
-  @spec sim_win([edge], non_neg_integer, staking_options) :: float
+  @spec sim_win([edge], non_neg_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iter, opts \\ []) do
-    sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
-    {:ok, wagers} = kelly(sedges, opts)
-    cdf           = edge_cdf(sedges)
-    ev            = sample_ev(cdf, wagers, iter)
-    ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)
+    {_, independent } = extract_staking_options(opts)
+    if independent do
+      sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
+      {:ok, wagers} = kelly(sedges, opts)
+      cdf           = edge_cdf(sedges)
+      ev            = sample_ev(cdf, wagers, iter)
+      {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
+    else
+      {:error, 'Cannot yet simulate dependent wins.'}
+    end
   end
 
   @doc """
