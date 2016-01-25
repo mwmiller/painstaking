@@ -55,19 +55,30 @@ defmodule PainStaking do
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
-        sizes = opt_set |> Enum.map(fn({d,p,o}) -> {d, Float.round(rr_kelly_fraction(rr,{d,p,o})*bankroll,2)} end)
+        sizes = opt_set
+                |> Enum.map(fn({d,p,o}) -> {d, rr_kelly_fraction(rr,{d,p,o})} end)
+                |> resize_fracs
+                |> Enum.map(fn({d,f}) -> {d, Float.round(f*bankroll,2)} end)
         {:ok, sizes}
       else
         {:error, "No suitable positive expectation edges found."}
       end
     else
-      fracs = edges |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end) |> Enum.take_while(fn({_,k}) -> k > 0 end)
+      fracs = edges
+              |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end)
+              |> Enum.take_while(fn({_,k}) -> k > 0 end)
+              |> resize_fracs
       # This will be important for setting up our matrix to solve later.
       # For now doing the extra work to avoid compile time warnings.
       _ = same_list(Map.new(edges, fn({d,p,o}) -> {d, {d,p,o}} end), fracs, [])
       sizes = fracs |> Enum.map(fn({d,f}) -> {d, Float.round(f*bankroll,2)} end)
       {:ok, sizes}
     end
+  end
+
+  defp resize_fracs(fracs) do
+    total = fracs |> Enum.reduce(0, fn({_,x}, acc) -> x+acc end)
+    if (total > 1), do: fracs |> Enum.map(fn({d,x}) -> {d, x/total} end), else: fracs
   end
 
   defp same_list(_, [], acc), do: Enum.reverse acc
