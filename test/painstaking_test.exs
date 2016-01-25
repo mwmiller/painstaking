@@ -6,10 +6,12 @@ defmodule PainStakingTest do
     no_edge     = {"no edge",     [prob: "0.50"], [us: -110]}
     small_edge  = {"small edge",  [prob: 0.55],   [us: -120]}
     decent_edge = {"decent edge", [prob: 0.55],   [us: "-110"]}
+    no_payout   = {"no payout",   [prob: 1],      [eu: 0]}
 
     assert PainStaking.kelly([no_edge]) == {:error, "No suitable positive expectation edges found."}, "No recommended bet for non-advantage situations"
     assert PainStaking.kelly([small_edge]) == {:ok, [{"small edge", 1.00}]}, "Small bets for small edges"
     assert PainStaking.kelly([decent_edge]) == {:ok, [{"decent edge", 5.50}]}, "Bet a bit with decent return"
+    assert PainStaking.kelly([no_payout]) == {:error, "No suitable positive expectation edges found."}, "Never bet if we won't get paid."
   end
 
   test "many horses" do

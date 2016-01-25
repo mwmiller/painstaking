@@ -89,7 +89,10 @@ defmodule PainStaking do
     (1 - probs) / (1 - payoffs)
   end
 
-  defp kelly_fraction(rr, {_,p,o}), do: extract_value(p, :prob) - (rr/extract_value(o, :eu))
+  defp kelly_fraction(rr, {_,p,o}) do
+    odds = extract_value(o, :eu)
+    if odds == 0, do: 0, else: extract_value(p, :prob) - (rr/odds)
+  end
 
   @doc """
   Determine how much to bet on each of a set of mutually exclusive outcomes in
