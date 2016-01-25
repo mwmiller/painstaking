@@ -55,15 +55,23 @@ defmodule PainStaking do
               |> pick_set_loop([])
       if Enum.count(opt_set) != 0 do
         rr = rr(opt_set)
-        sizes = opt_set |> Enum.map(fn({d,p,o}) -> {d, Float.round(kelly_fraction(rr,{d,p,o})*bankroll,2)} end)
+        sizes = opt_set |> Enum.map(fn({d,p,o}) -> {d, Float.round(rr_kelly_fraction(rr,{d,p,o})*bankroll,2)} end)
         {:ok, sizes}
       else
         {:error, "No suitable positive expectation edges found."}
       end
     else
-      {:error, "Cannot handle multiple independent events, yet."}
+      fracs = edges |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end) |> Enum.take_while(fn({_,k}) -> k > 0 end)
+      # This will be important for setting up our matrix to solve later.
+      # For now doing the extra work to avoid compile time warnings.
+      _ = same_list(Map.new(edges, fn({d,p,o}) -> {d, {d,p,o}} end), fracs, [])
+      sizes = fracs |> Enum.map(fn({d,f}) -> {d, Float.round(f*bankroll,2)} end)
+      {:ok, sizes}
     end
   end
+
+  defp same_list(_, [], acc), do: Enum.reverse acc
+  defp same_list(map, [{d,_}|t], acc), do: same_list(map, t, [Map.get(map,d)|acc])
 
   defp extract_staking_options(opts) do
       {Keyword.get(opts, :bankroll, 100), Keyword.get(opts, :independent, false)}
@@ -89,9 +97,14 @@ defmodule PainStaking do
     (1 - probs) / (1 - payoffs)
   end
 
-  defp kelly_fraction(rr, {_,p,o}) do
+  defp rr_kelly_fraction(rr, {_,p,o}) do
     odds = extract_value(o, :eu)
     if odds == 0, do: 0, else: extract_value(p, :prob) - (rr/odds)
+  end
+
+  defp kelly_fraction({_,p,o}) do
+    odds = extract_value(o, :eu)
+    if odds == 0, do: 0, else: (extract_value(p, :prob)*odds - 1)/(odds - 1)
   end
 
   @doc """

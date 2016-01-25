@@ -25,6 +25,25 @@ defmodule PainStakingTest do
     assert PainStaking.kelly([chalk, dark, glue]) == {:ok, [{"dark", 2.06}, {"chalk", 37.44}, {"glue", 0.41}]}, "Leaving it off wildly changes the results"
     assert PainStaking.kelly([chalk, stalk, dark]) == {:ok, [{"dark", 3.73}, {"chalk", 69.81}, {"stalk", 18.16}]}, "Where dropping a positive EV unlikely winner is less dramatic"
   end
+  test "simultaneous independent" do
+    # Events from the Whitrow, 2007 paper plus 13 as a negative EV example
+    events = [ {"1", [prob: 0.470], [eu: 2.50]},
+               {"2", [prob: 0.530], [eu: 2.00]},
+               {"3", [prob: 0.480], [eu: 2.20]},
+               {"4", [prob: 0.310], [eu: 3.50]},
+               {"5", [prob: 0.255], [eu: 4.33]},
+               {"6", [prob: 0.270], [eu: 4.00]},
+               {"7", [prob: 0.270], [eu: 4.00]},
+               {"8", [prob: 0.311], [eu: 3.40]},
+               {"9", [prob: 0.310], [eu: 3.40]},
+              {"10", [prob: 0.466], [eu: 2.20]},
+              {"11", [prob: 0.371], [eu: 2.70]},
+              {"12", [prob: 0.304], [eu: 3.30]},
+              {"13", [prob: 0.204], [eu: 3.30]},
+             ]
+
+    assert PainStaking.kelly(events, [independent: true]) == {:ok, [{"1", 11.67}, {"2", 6.0}, {"3", 4.67}, {"4", 3.4}, {"5", 3.13}, {"6", 2.67}, {"7", 2.67}, {"8", 2.39}, {"9", 2.25}, {"10", 2.1}, {"11", 0.1}, {"12", 0.14}]}, "Naive kelly sizing without algorithm"
+  end
 
   test "simple arb" do
     no_arb_error = {:error, "No arbitrage exists for these events."}

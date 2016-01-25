@@ -3,7 +3,7 @@
 Bet stake sizing in Elixir:
 
 - Kelly Criterion
-    - Currently multiple events must be mutually exclusive ("many horse")
+    - Simultanenous independent events are currently over-bet
 - Arbitrage
 
 Available in hex: `{:painstaking, "~> 0.2.0"}`
