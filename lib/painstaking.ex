@@ -49,9 +49,7 @@ defmodule PainStaking do
   @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
   def kelly(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
-    if Enum.count(edges) > 1 and independent do
-      {:error, "Cannot handle multiple independent events, yet."}
-    else
+    if not independent or Enum.count(edges) == 1 do
       opt_set = edges
               |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
               |> pick_set_loop([])
@@ -62,6 +60,8 @@ defmodule PainStaking do
       else
         {:error, "No suitable positive expectation edges found."}
       end
+    else
+      {:error, "Cannot handle multiple independent events, yet."}
     end
   end
 
