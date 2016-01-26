@@ -61,8 +61,10 @@ defmodule PainStakingTest do
 
     {:ok, win} = PainStaking.sim_win([small_edge], 100, [independent: true])
     assert win <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
-    {:ok, win} = PainStaking.sim_win([unlikely, small_edge], 1000, [independent: true])
+    {:ok, win} = PainStaking.sim_win([unlikely, small_edge], 100, [independent: true])
     assert win <= 50.00, "Bigger variance when you include an unlikely result"
+    {:ok, win} = PainStaking.sim_win([unlikely, small_edge], 100, [independent: false])
+    assert win <= 5.00, "Mutally exclusive is somewhat different"
     assert PainStaking.sim_win([always_win], 1, [independent: true]) == {:ok, 90.91}, "If the result is known, you get full value."
     assert PainStaking.sim_win([always_win], 100, [independent: true]) == {:ok, 90.91}, "Even when you repeat it many times"
     assert PainStaking.sim_win([always_win, always_lose], 100, [independent: true]) == {:ok, 90.91}, "Same when you add one which cannot win"

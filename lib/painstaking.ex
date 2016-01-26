@@ -154,12 +154,24 @@ defmodule PainStaking do
 
 
   # This seems way more complex than it ought to be.
-  @spec edge_cdf([edge]) :: [{[float], float}]
-  defp edge_cdf(edges) do
-     payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
-     last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
-     0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
+  @spec edge_cdf([edge], boolean) :: [{[float], float}]
+  defp edge_cdf(edges, independent) do
+    payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
+    possibles = if independent do
+      last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
+      0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
+    else
+      last = Enum.count(payoffs) - 1
+      0..last |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
+    end
+    possibles |> map_prob([], 0)
   end
+  defp zero_except(_,[], acc), do: acc
+  defp zero_except(n,[{v,p}|t],{vals,j}) do
+    {newval, newprob} = if Enum.count(vals) == n, do: {v,p}, else: {0,0}
+    zero_except(n,t,{Enum.into([newval], vals), j + newprob})
+  end
+
   defp pick_combo(_, [], acc), do: acc
   defp pick_combo(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = if ((n >>> Enum.count(vals) &&& 1)) != 0, do: {v,p}, else: {0,1-p}
@@ -183,15 +195,11 @@ defmodule PainStaking do
   @spec sim_win([edge], non_neg_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iter, opts \\ []) do
     {_, independent } = extract_staking_options(opts)
-    if independent do
-      sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
-      {:ok, wagers} = kelly(sedges, opts)
-      cdf           = edge_cdf(sedges)
-      ev            = sample_ev(cdf, wagers, iter)
-      {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
-    else
-      {:error, 'Cannot yet simulate dependent wins.'}
-    end
+    sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
+    {:ok, wagers} = kelly(sedges, opts)
+    cdf           = edge_cdf(sedges, independent)
+    ev            = sample_ev(cdf, wagers, iter)
+    {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
   end
 
   @doc """
@@ -223,8 +231,18 @@ defmodule PainStaking do
 
   defp sample_result(cdf) do
     pick = :random.uniform
-    {_, [{r,_}|_]} = cdf |> Enum.split_while(fn({_,plim}) -> pick > plim end)
-    r
+    case cdf |> Enum.split_while(fn({_,plim}) -> pick > plim end) do
+      {_, [{r,_}|_]}  -> r
+      _               -> proper_loss(cdf)
+    end
   end
+
+  defp proper_loss(cdf) do
+    {l,_} = List.first(cdf)
+    zeroed(Enum.count(l),[])
+  end
+
+  def zeroed(0, acc), do: acc
+  def zeroed(n, acc), do: zeroed(n-1, [0|acc])
 
 end
