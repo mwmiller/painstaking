@@ -57,6 +57,7 @@ defmodule PainStakingTest do
     small_edge = {"small edge", [prob: "0.55"], [us: -110]}
     unlikely = {"prolly not", [prob: 0.05], [uk: "30/1"]}
     always_win = {"always win", [prob: 1], [us: -110]}
+    always_lose = {"always lose", [prob: 0], [us: -110]}
 
     {:ok, win} = PainStaking.sim_win([small_edge], 100, [independent: true])
     assert win <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
@@ -64,7 +65,7 @@ defmodule PainStakingTest do
     assert win <= 50.00, "Bigger variance when you include an unlikely result"
     assert PainStaking.sim_win([always_win], 1, [independent: true]) == {:ok, 90.91}, "If the result is known, you get full value."
     assert PainStaking.sim_win([always_win], 100, [independent: true]) == {:ok, 90.91}, "Even when you repeat it many times"
-    assert PainStaking.sim_win([always_win], 100, [independent: true]) == {:ok, 90.91}, "Same when you add one which cannot win"
+    assert PainStaking.sim_win([always_win, always_lose], 100, [independent: true]) == {:ok, 90.91}, "Same when you add one which cannot win"
   end
 
   test "simple ev" do

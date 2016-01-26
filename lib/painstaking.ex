@@ -218,7 +218,7 @@ defmodule PainStaking do
   defp gather_results(_, 0, acc), do: Enum.reverse acc
   defp gather_results(cdf, n, acc), do: gather_results(cdf, n-1, [sample_result(cdf)|acc])
 
-  defp add_row([],[],acc), do: acc
+  defp add_row(_,[],acc), do: acc
   defp add_row([h|t],[{_,f}|r], acc), do: add_row(t,r, h*f+acc)
 
   defp sample_result(cdf) do
