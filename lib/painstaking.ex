@@ -212,12 +212,8 @@ defmodule PainStaking do
     end
   end
 
-  defp proper_loss(cdf) do
-    {list,_} = List.first(cdf)
-    zeroed(Enum.count(list),[])
-  end
-
-  defp zeroed(0, acc), do: acc
-  defp zeroed(n, acc), do: zeroed(n-1, [0|acc])
+  defp proper_loss([{list,_}|t), do: zeroed(list,[])
+  defp zeroed([], acc), do: acc
+  defp zeroed([_|t], acc), do: zeroed(t, [0|acc])
 
 end
