@@ -14,7 +14,7 @@ defmodule PainStakingTest do
     assert PainStaking.kelly([no_payout]) == {:error, "No suitable positive expectation edges found."}, "Never bet if we won't get paid."
   end
 
-  test "many horses" do
+  test "many horses kelly" do
     chalk = {"chalk", [prob: 0.75], [uk: "3/5"]}
     stalk = {"stalk", [prob: 0.20], [uk: "7/2"]}
     dark  = {"dark", [prob: 0.04], [uk: "30/1"]}
@@ -25,7 +25,7 @@ defmodule PainStakingTest do
     assert PainStaking.kelly([chalk, dark, glue]) == {:ok, [{"dark", 2.06}, {"chalk", 37.44}, {"glue", 0.41}]}, "Leaving it off wildly changes the results"
     assert PainStaking.kelly([chalk, stalk, dark]) == {:ok, [{"dark", 3.73}, {"chalk", 69.81}, {"stalk", 18.16}]}, "Where dropping a positive EV unlikely winner is less dramatic"
   end
-  test "simultaneous independent" do
+  test "simultaneous independent kelly" do
     # Events from the Whitrow, 2007 paper plus 13 as a negative EV example
     events = [ {"1", [prob: 0.470], [eu: 2.50]},
                {"2", [prob: 0.530], [eu: 2.00]},

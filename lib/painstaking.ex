@@ -49,40 +49,28 @@ defmodule PainStaking do
   @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
   def kelly(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
-    if not independent or Enum.count(edges) == 1 do
-      opt_set = edges
-              |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
-              |> pick_set_loop([])
-      if Enum.count(opt_set) != 0 do
-        rr = rr(opt_set)
-        sizes = opt_set
-                |> Enum.map(fn({d,p,o}) -> {d, rr_kelly_fraction(rr,{d,p,o})} end)
-                |> resize_fracs
-                |> Enum.map(fn({d,f}) -> {d, Float.round(f*bankroll,2)} end)
-        {:ok, sizes}
-      else
-        {:error, "No suitable positive expectation edges found."}
-      end
+    sizes = if not independent or Enum.count(edges) == 1 do
+      opt_set = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2) |> pick_set_loop([])
+      rr = rr(opt_set)
+      opt_set |> Enum.map(fn({d,p,o}) -> {d, rr_kelly_fraction(rr,{d,p,o})} end)
     else
-      fracs = edges
-              |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end)
-              |> Enum.take_while(fn({_,k}) -> k > 0 end)
-              |> resize_fracs
-      # This will be important for setting up our matrix to solve later.
-      # For now doing the extra work to avoid compile time warnings.
-      _ = same_list(Map.new(edges, fn({d,p,o}) -> {d, {d,p,o}} end), fracs, [])
-      sizes = fracs |> Enum.map(fn({d,f}) -> {d, Float.round(f*bankroll,2)} end)
-      {:ok, sizes}
+      edges |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end)
+    end
+    pretty_sizes = sizes |> resize_fracs |> frac_list(bankroll,[])
+    case Enum.count(pretty_sizes) do
+      0 -> {:error, "No suitable positive expectation edges found."}
+      _ -> {:ok, pretty_sizes}
     end
   end
 
-  defp resize_fracs(fracs) do
-    total = fracs |> Enum.reduce(0, fn({_,x}, acc) -> x+acc end)
-    if (total > 1), do: fracs |> Enum.map(fn({d,x}) -> {d, x/total} end), else: fracs
-  end
+  defp frac_list([], _,acc), do: Enum.reverse acc
+  defp frac_list([{d,f}|t],b, acc), do: frac_list(t,b,[{d, Float.round(f*b,2)}|acc])
 
-  defp same_list(_, [], acc), do: Enum.reverse acc
-  defp same_list(map, [{d,_}|t], acc), do: same_list(map, t, [Map.get(map,d)|acc])
+  defp resize_fracs(fracs) do
+    winners = Enum.filter(fracs, fn({_,x}) -> x > 0 end)
+    total = winners |> Enum.reduce(0, fn({_,x}, acc) -> x+acc end)
+    if (total > 1), do: winners |> Enum.map(fn({d,x}) -> {d, x/total} end), else: winners
+  end
 
   defp extract_staking_options(opts) do
       {Keyword.get(opts, :bankroll, 100), Keyword.get(opts, :independent, false)}
