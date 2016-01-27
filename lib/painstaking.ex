@@ -133,12 +133,12 @@ defmodule PainStaking do
   The payouts may not all be exactly the same because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
   """
-  @spec arb([wager_price], staking_options) :: {:ok, [float], float} | {:error, String.t}
+  @spec arb([edge], staking_options) :: {:ok, [tagged_number], float} | {:error, String.t}
   def arb(mutually_exclusives, opts \\ []) do
     {max_outlay, independent} = extract_staking_options(opts)
     if arb_exists(mutually_exclusives) and not independent do
-      sizes = mutually_exclusives |> Enum.map(fn(x) -> size_to_collect(x, max_outlay) end)
-      {:ok, sizes, max_outlay - Enum.sum(sizes) |> Float.round(2)}
+      sizes = mutually_exclusives |> Enum.map(fn({d,_,o}) -> {d, size_to_collect(o, max_outlay)} end)
+      {:ok, sizes, sizes |> Enum.reduce(max_outlay, fn({_,x},acc) -> acc - x end) |> Float.round(2)}
     else
       {:error, "No arbitrage exists for these events."}
     end
@@ -150,7 +150,7 @@ defmodule PainStaking do
   end
 
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_value(:eu))) |> Float.round(2)
-  defp arb_exists(mutually_exclusives), do: Enum.count(mutually_exclusives) > 1 and mutually_exclusives |> Enum.map(fn(x) -> extract_value(x,:prob) end) |> Enum.sum < 1
+  defp arb_exists(mutually_exclusives), do: Enum.count(mutually_exclusives) > 1 and mutually_exclusives |> Enum.map(fn({_,_,o}) -> extract_value(o,:prob) end) |> Enum.sum < 1
 
 
   # This seems way more complex than it ought to be.
