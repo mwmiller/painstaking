@@ -44,6 +44,11 @@ defmodule PainStaking do
   - `independent`: mutually exclusive or independent simultaneous events; defaults to `false`
   """
   @type staking_options :: [bankroll: number, independent: boolean]
+
+  defp extract_staking_options(opts) do
+      {Keyword.get(opts, :bankroll, 100), Keyword.get(opts, :independent, false)}
+  end
+
   @doc """
   Determine the amount to stake on advantage situations based on the Kelly Criterion
 
@@ -52,22 +57,25 @@ defmodule PainStaking do
   @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
   def kelly(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
-    sizes = if not independent or Enum.count(edges) == 1 do
-      opt_set = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2) |> pick_set_loop([])
-      rr = rr(opt_set)
-      opt_set |> Enum.map(fn({d,p,o}) -> {d, rr_kelly_fraction(rr,{d,p,o})} end)
+    {rr, set} = if not independent or Enum.count(edges) == 1 do
+      optimal_set = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2) |> pick_optimal_set([])
+      {rr(optimal_set), optimal_set}
     else
-      edges |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o})} end)
+      {nil, edges} # More work to be done here.
     end
-    pretty_sizes = sizes |> resize_fracs |> frac_list(bankroll,[])
+    pretty_sizes = set |> Enum.map(fn({d,p,o}) -> {d, kelly_fraction({d,p,o}, rr)} end)
+                       |> resize_fracs
+                       |> fracs_display(bankroll,[])
     case Enum.count(pretty_sizes) do
       0 -> {:error, "No suitable positive expectation edges found."}
       _ -> {:ok, pretty_sizes}
     end
   end
 
-  defp frac_list([], _,acc), do: Enum.reverse acc
-  defp frac_list([{d,f}|t],b, acc), do: frac_list(t,b,[{d, Float.round(f*b,2)}|acc])
+  defp pick_optimal_set([], acc), do: Enum.reverse acc
+  defp pick_optimal_set([this|rest], acc) do
+    if single_ev(this,1) > rr(acc), do: pick_optimal_set(rest, [this|acc]), else: pick_optimal_set([], acc)
+  end
 
   defp resize_fracs(fracs) do
     winners = Enum.filter(fracs, fn({_,x}) -> x > 0 end)
@@ -75,18 +83,8 @@ defmodule PainStaking do
     if (total > 1), do: winners |> Enum.map(fn({d,x}) -> {d, x/total} end), else: winners
   end
 
-  defp extract_staking_options(opts) do
-      {Keyword.get(opts, :bankroll, 100), Keyword.get(opts, :independent, false)}
-  end
-
-  defp pick_set_loop([], acc), do: Enum.reverse acc
-  defp pick_set_loop([this|rest], acc) do
-    if single_ev(this,1) > rr(acc) do
-        pick_set_loop(rest, [this|acc])
-    else
-        pick_set_loop([], acc)
-    end
-  end
+  defp fracs_display([], _,acc), do: Enum.reverse acc
+  defp fracs_display([{d,f}|t],b, acc), do: fracs_display(t,b,[{d, Float.round(f*b,2)}|acc])
 
   # The "reserve rate" above which any additions to the set must be
   # in order to be included in the optimal set
@@ -98,14 +96,11 @@ defmodule PainStaking do
     prob_factor /  pay_factor
   end
 
-  defp rr_kelly_fraction(rr, {_,p,o}) do
+  defp kelly_fraction({_,p,o}, rr) do
     odds = extract_value(o, :eu)
-    if odds == 0, do: 0, else: extract_value(p, :prob) - (rr/odds)
-  end
-
-  defp kelly_fraction({_,p,o}) do
-    odds = extract_value(o, :eu)
-    if odds == 0, do: 0, else: (extract_value(p, :prob)*odds - 1)/(odds - 1)
+    if odds == 0 do
+    else if rr, do: extract_value(p, :prob) - (rr/odds), else: (extract_value(p, :prob)*odds - 1)/(odds - 1)
+    end
   end
 
   @doc """
