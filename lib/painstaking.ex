@@ -91,15 +91,20 @@ defmodule PainStaking do
   defp rr([]), do: 1.0 # First must merely be positive expectation
   defp rr(included) do
     {prob_factor, pay_factor} = included |> Enum.reduce({1,1}, fn({_,p,o}, {x,y}) ->
-                                    {x - extract_value(p,:prob), y - 1/extract_value(o,:eu)}
+                                    {x - extract_price_value(p,:prob), y - 1/extract_price_value(o,:eu)}
                                     end)
     prob_factor /  pay_factor
   end
 
+  defp extract_price_value(kwl, into) do
+    [type|_] = Keyword.keys(kwl)
+    Exoddic.convert(kwl[type], from: type, to: into, for_display: false)
+  end
+
   defp kelly_fraction({_,p,o}, rr) do
-    odds = extract_value(o, :eu)
+    odds = extract_price_value(o, :eu)
     if odds == 0 do
-    else if rr, do: extract_value(p, :prob) - (rr/odds), else: (extract_value(p, :prob)*odds - 1)/(odds - 1)
+    else if rr, do: extract_price_value(p, :prob) - (rr/odds), else: (extract_price_value(p, :prob)*odds - 1)/(odds - 1)
     end
   end
 
@@ -124,19 +129,14 @@ defmodule PainStaking do
     end
   end
 
-  defp extract_value(kwl, into) do
-    [type|_] = Keyword.keys(kwl)
-    Exoddic.convert(kwl[type], from: type, to: into, for_display: false)
-  end
-
-  defp size_to_collect(offer, goal), do: (goal / (offer |> extract_value(:eu))) |> Float.round(2)
-  defp arb_exists(mutually_exclusives), do: Enum.count(mutually_exclusives) > 1 and mutually_exclusives |> Enum.map(fn({_,_,o}) -> extract_value(o,:prob) end) |> Enum.sum < 1
+  defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
+  defp arb_exists(mutually_exclusives), do: Enum.count(mutually_exclusives) > 1 and mutually_exclusives |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end) < 1
 
 
   # This seems way more complex than it ought to be.
   @spec edge_cdf([edge], boolean) :: [{[float], float}]
   defp edge_cdf(edges, independent) do
-    payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_value(o, :eu), extract_value(p, :prob)} end)
+    payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
     possibles = if independent do
       last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
       0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
@@ -179,6 +179,11 @@ defmodule PainStaking do
     {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
   end
 
+  defp sample_ev(cdf, fracs, iters) do
+      total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_result_row(x,fracs,a) end)
+      total / iters
+  end
+
   @doc """
   The mathematical expectations for a list of supposed edges
 
@@ -191,18 +196,13 @@ defmodule PainStaking do
   end
   defp ev_loop([],_, acc), do: Enum.reverse acc
   defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
-  defp single_ev({_,p,o},m), do: m * extract_value(p, :prob) * extract_value(o, :eu)
-
-  defp sample_ev(cdf, fracs, iters) do
-      total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_row(x,fracs,a) end)
-      total / iters
-  end
+  defp single_ev({_,p,o},m), do: m * extract_price_value(p, :prob) * extract_price_value(o, :eu)
 
   defp gather_results(_, 0, acc), do: Enum.reverse acc
   defp gather_results(cdf, n, acc), do: gather_results(cdf, n-1, [sample_result(cdf)|acc])
 
-  defp add_row(_,[],acc), do: acc
-  defp add_row([h|t],[{_,f}|r], acc), do: add_row(t,r, h*f+acc)
+  defp add_result_row(_,[],acc), do: acc
+  defp add_result_row([h|t],[{_,f}|r], acc), do: add_result_row(t,r, h*f+acc)
 
   defp sample_result(cdf) do
     pick = :random.uniform
@@ -212,7 +212,7 @@ defmodule PainStaking do
     end
   end
 
-  defp proper_loss([{list,_}|t), do: zeroed(list,[])
+  defp proper_loss([{list,_}|_]), do: zeroed(list,[])
   defp zeroed([], acc), do: acc
   defp zeroed([_|t], acc), do: zeroed(t, [0|acc])
 
