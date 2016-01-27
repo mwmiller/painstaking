@@ -92,11 +92,10 @@ defmodule PainStaking do
   # in order to be included in the optimal set
   defp rr([]), do: 1.0 # First must merely be positive expectation
   defp rr(included) do
-
-    probs = included |> Enum.map(fn({_,p,_}) -> extract_value(p,:prob) end) |> Enum.sum
-    payoffs = included |> Enum.map(fn({_,_,o}) -> 1/extract_value(o,:eu) end) |> Enum.sum
-
-    (1 - probs) / (1 - payoffs)
+    {prob_factor, pay_factor} = included |> Enum.reduce({1,1}, fn({_,p,o}, {x,y}) ->
+                                    {x - extract_value(p,:prob), y - 1/extract_value(o,:eu)}
+                                    end)
+    prob_factor /  pay_factor
   end
 
   defp rr_kelly_fraction(rr, {_,p,o}) do
