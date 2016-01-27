@@ -187,13 +187,12 @@ defmodule PainStaking do
   Simulate a repeated edge situation and see the average amount won.
 
   `edges` is a list of simultaneous events
-  `iter` is the number of simulation iterations to run
+  `iter` is the number of simulation iterations to run, defaults to 100
 
-  Returns the average win, assuming wagers are staked according
-  to the `kelly`
+  Returns the average win, assuming wagers are staked according to `kelly`
   """
   @spec sim_win([edge], non_neg_integer, staking_options) :: {:ok, float} | {:error, String.t}
-  def sim_win(edges, iter, opts \\ []) do
+  def sim_win(edges, iter \\ 100, opts \\ []) do
     {_, independent } = extract_staking_options(opts)
     sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
     {:ok, wagers} = kelly(sedges, opts)
