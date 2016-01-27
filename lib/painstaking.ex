@@ -8,6 +8,7 @@ defmodule PainStaking do
 
   @typedoc """
   A keyword list with a single pair.
+
   The key should be one of the atoms for a supported odds format from Exoddic.
   The value should be a supported way for expressing the odds for that key.
 
@@ -23,28 +24,30 @@ defmodule PainStaking do
   @typedoc """
   A tuple which represents a supposed advantage wagering situation.
 
-  The first element is an edge description
-  The second element is the estimate of the fair (or actual) odds of winning.
-  The third element is the odds offered by the counter-party to the wager.
+  The elements, in order:
+  - an edge description
+  - the estimate of the fair (or actual) odds of winning
+  - the odds offered by the counter-party to the wager
   """
   @type edge :: {String.t, wager_price, wager_price}
   @typedoc """
-  A number tagged with a description to make collating results easier.
+  A number tagged with a description
+
+  Primarily used to make it easier to collate results.
   """
   @type tagged_number :: {String.t, number}
   @typedoc  """
   A keyword list which configures optional parameters for staking calculators
 
-  - `bankroll` is the total amount available for wagering, defaults to `100`.
-  - `independent` chooses between mutually exclusive and independent simultaneous events, defaults to `false`
+  The keywords are:
+  - `bankroll`: the total amount available for wagering; defaults to `100`
+  - `independent`: mutually exclusive or independent simultaneous events; defaults to `false`
   """
   @type staking_options :: [bankroll: number, independent: boolean]
   @doc """
-  Determine the amount to stake on advantage situations based on the
-  estimated edge and the Kelly Criterion
+  Determine the amount to stake on advantage situations based on the Kelly Criterion
 
-  Returns {:ok, list of amounts to wager on each}.
-  The list will be sorted in expectation order.
+  The output list may be in a different order or have fewer elements than the input list.
   """
   @spec kelly([edge], staking_options) :: {:ok, [tagged_number]} | {:error, String.t}
   def kelly(edges, opts \\ []) do
@@ -110,13 +113,8 @@ defmodule PainStaking do
   Determine how much to bet on each of a set of mutually exclusive outcomes in
   an arbitrage situation.
 
-  The optional `bankroll` can be used to set the maximum amount available to
+  The `bankroll` option can be used to set the maximum amount available to
   bet on these outcomes.  The smaller the arbitrage, the closer your outlay will be to this number.
-
-  `mutually_exclusives` is a list of mutually exclusive outcomes and the odds
-  offered on each.
-
-  Successful return: {:ok, [stake on each outcome], expected profit}
 
   The payouts may not all be exactly the same because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
@@ -154,6 +152,7 @@ defmodule PainStaking do
     end
     possibles |> map_prob([], 0)
   end
+
   defp zero_except(_,[], acc), do: acc
   defp zero_except(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = if Enum.count(vals) == n, do: {v,p}, else: {0,0}
@@ -174,10 +173,7 @@ defmodule PainStaking do
   @doc """
   Simulate a repeated edge situation and see the average amount won.
 
-  `edges` is a list of simultaneous events
-  `iter` is the number of simulation iterations to run, defaults to 100
-
-  Returns the average win, assuming wagers are staked according to `kelly`
+  `iter` is the number of simulation iterations to run
   """
   @spec sim_win([edge], non_neg_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iter \\ 100, opts \\ []) do
@@ -193,8 +189,6 @@ defmodule PainStaking do
   The mathematical expectations for a list of supposed edges
 
   A losing proposition will have an EV below the supplied `bankroll`
-
-  The return values will be tagged with the provided edge descriptions
   """
   @spec ev([edge], staking_options) :: {:ok, [tagged_number]}
   def ev(edges, opts \\ []) do
