@@ -1,5 +1,5 @@
 defmodule PainStakingTest do
-  use ExUnit.Case
+  use PowerAssert
   import PainStaking
   doctest PainStaking
 

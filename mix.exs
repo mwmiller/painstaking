@@ -22,6 +22,7 @@ defmodule PainStaking.Mixfile do
     [
       {:earmark, ">= 0.0.0", only: :dev},
       {:ex_doc, "~> 0.11.4", only: :dev},
+      {:power_assert, "~> 0.0.8", only: :test},
       {:exoddic, "~> 0.0.2"},
     ]
   end
