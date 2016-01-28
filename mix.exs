@@ -28,7 +28,7 @@ defmodule PainStaking.Mixfile do
 
   defp description do
     """
-    Bet sizing recommendations
+    Bet stake sizing recommendations
     """
   end
 
