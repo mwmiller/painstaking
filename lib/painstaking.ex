@@ -101,7 +101,7 @@ defmodule PainStaking do
     prob_factor /  pay_factor
   end
 
-  @spec extract_price_value(wager_price, atom) :: number
+  @spec extract_price_value(wager_price, atom) :: float
   defp extract_price_value(kwl, into) do
     [type|_] = Keyword.keys(kwl)
     Exoddic.convert(kwl[type], from: type, to: into, for_display: false)
@@ -110,7 +110,7 @@ defmodule PainStaking do
   @spec kelly_fraction(edge, float | nil) :: float
   defp kelly_fraction({_,p,o}, rr) do
     odds = extract_price_value(o, :eu)
-    if odds == 0 do
+    if odds == 0 do 0
     else if rr, do: extract_price_value(p, :prob) - (rr/odds), else: (extract_price_value(p, :prob)*odds - 1)/(odds - 1)
     end
   end
@@ -136,11 +136,11 @@ defmodule PainStaking do
     end
   end
 
-  @spec size_to_collect(wager_price, number) :: float
-  defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
   @spec arb_exists?([edge]) :: boolean
   defp arb_exists?(edges), do: Enum.count(edges) > 1 and edges |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end) < 1
 
+  @spec size_to_collect(wager_price, number) :: float
+  defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
 
   # This seems way more complex than it ought to be.
   @typep cdf :: [{[float], float}]
@@ -148,12 +148,12 @@ defmodule PainStaking do
   defp edge_cdf(edges, independent) do
     payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
     possibles = if independent do
-      last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
-      0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
-    else
-      last = Enum.count(payoffs) - 1
-      0..last |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
-    end
+        last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
+        0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
+      else
+        last = Enum.count(payoffs) - 1
+        0..last |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
+      end
     possibles |> map_prob([], 0)
   end
 
@@ -170,6 +170,7 @@ defmodule PainStaking do
     {newval, newprob} = if ((n >>> Enum.count(vals) &&& 1)) != 0, do: {v,p}, else: {0,1-p}
     pick_combo(n,t,{Enum.into([newval], vals), j * newprob})
   end
+
   @spec map_prob([tuple], list, number) :: [tuple]
   defp map_prob([], acc, _), do: acc
   defp map_prob([{l,p}|t], acc, j) do
@@ -208,9 +209,11 @@ defmodule PainStaking do
     {mult, _ } = extract_staking_options(opts)
     {:ok, ev_loop(edges,mult,[])}
   end
+
   @spec ev_loop([edge], float, list) :: [tagged_number]
   defp ev_loop([],_, acc), do: Enum.reverse acc
   defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
+
   @spec single_ev(edge, number) :: float
   defp single_ev({_,p,o},m), do: m * extract_price_value(p, :prob) * extract_price_value(o, :eu)
 
@@ -233,6 +236,7 @@ defmodule PainStaking do
 
   @spec proper_loss(cdf) :: [number]
   defp proper_loss([{list,_}|_]), do: zeroed(list,[])
+
   @spec zeroed(list, [0]) :: [0]
   defp zeroed([], acc), do: acc
   defp zeroed([_|t], acc), do: zeroed(t, [0|acc])
