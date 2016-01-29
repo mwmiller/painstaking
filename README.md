@@ -7,9 +7,6 @@ Bet stake sizing in Elixir:
 - Monte Carlo simulated wins
 - Mathematical expectation
 
-Please note that simultaneous independent bets are currently over-staked with `kelly`.
-For small sets of bets, the difference is negligible.
-
 ## Dependencies
 
 - Exoddic
@@ -20,7 +17,7 @@ For small sets of bets, the difference is negligible.
 # add dependencies in mix.exs
 defp deps do
   [
-    {:painstaking, "~> 0.4.5"}
+    {:painstaking, "~> 0.4.6"}
   ]
 end
 
