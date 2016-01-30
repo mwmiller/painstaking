@@ -26,6 +26,7 @@ defmodule PainStakingTest do
     assert kelly([chalk, dark, glue]) == {:ok, [{"dark", 2.06}, {"chalk", 37.44}, {"glue", 0.41}]}, "Leaving it off wildly changes the results"
     assert kelly([chalk, stalk, dark]) == {:ok, [{"dark", 3.73}, {"chalk", 69.81}, {"stalk", 18.16}]}, "Where dropping a positive EV unlikely winner is less dramatic"
   end
+
   test "simultaneous independent kelly" do
     # Events from the Whitrow, 2007 paper plus 13 as a negative EV example
     events = [ {"1", [prob: 0.470], [eu: 2.50]},
@@ -54,7 +55,7 @@ defmodule PainStakingTest do
     assert arb([{"nadal", [prob: 0.50], [us: "-161"]}, {"murray", [prob: 0.25], [us: "+350"]}, {"becker", [prob: 0.01],  [us: "+632"]}]) ==  {:ok, [{"nadal", 61.69}, {"murray", 22.22}, {"becker", 13.66}], 2.43}, "Multi-ways are harder to spot so may exhibit more profit"
   end
 
-  test "independent simultaneous sim_win" do
+  test "simultaneous independent sim_win" do
     small_edge = {"small edge", [prob: "0.55"], [us: -110]}
     unlikely = {"prolly not", [prob: 0.05], [uk: "30/1"]}
     always_win = {"always win", [prob: 1], [us: -110]}
@@ -93,4 +94,5 @@ defmodule PainStakingTest do
 
     assert ev([neg_ev, pos_ev]) == {:ok, [{"no edge", 95.45454545454545}, {"small edge", 105.00}]}, "Difference from 100 is the expected win"
   end
+
 end
