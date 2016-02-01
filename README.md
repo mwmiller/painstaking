@@ -17,7 +17,7 @@ Bet stake sizing in Elixir:
 # add dependencies in mix.exs
 defp deps do
   [
-    {:painstaking, "~> 0.4.6"}
+    {:painstaking, "~> 0.5"}
   ]
 end
 

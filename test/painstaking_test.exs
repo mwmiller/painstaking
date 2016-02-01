@@ -59,7 +59,7 @@ defmodule PainStakingTest do
     small_edge = {"small edge", [prob: "0.55"], [us: -110]}
     unlikely = {"prolly not", [prob: 0.05], [uk: "30/1"]}
     always_win = {"always win", [prob: 1], [us: -110]}
-    always_lose = {"always lose", [prob: 0], [us: -110]}
+    always_lose = {"always lose", [roi: 0], [us: -110]}
 
     {:ok, win} = sim_win([small_edge])
     assert win <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
