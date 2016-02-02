@@ -54,6 +54,7 @@ defmodule PainStaking do
   How much to stake on advantage situations based on the Kelly Criterion
 
   The output list may be in a different order or have fewer elements than the input list.
+
   Mutually exclusive bets are staked as if they were not simultaneous. This leads to
   over-betting.  The difference is negligible on small sets of wagers.
   """
@@ -183,7 +184,7 @@ defmodule PainStaking do
 
   `iterations` controls the number of simulation iterations run
   """
-  @spec sim_win([edge], non_neg_integer, staking_options) :: {:ok, float} | {:error, String.t}
+  @spec sim_win([edge], pos_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iterations \\ 100, opts \\ []) do
     {_, independent } = extract_staking_options(opts)
     sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
@@ -193,7 +194,7 @@ defmodule PainStaking do
     {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
   end
 
-  @spec sample_ev(cdf, [tagged_number], non_neg_integer) :: float
+  @spec sample_ev(cdf, [tagged_number], pos_integer) :: float
   defp sample_ev(cdf, fracs, iters) do
       total = gather_results(cdf, iters, []) |>  Enum.reduce(0, fn(x, a) -> add_result_row(x,fracs,a) end)
       total / iters
