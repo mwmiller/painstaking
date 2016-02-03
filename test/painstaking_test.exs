@@ -76,15 +76,15 @@ defmodule PainStakingTest do
     dark  = {"dark", [prob: 0.04], [uk: "30/1"]}
     glue  = {"glue", [prob: 0.01], [uk: "100/1"]}
 
-    {:ok, win} = sim_win([chalk,dark,glue], 100, [independent: false])
+    {:ok, win} = sim_win([chalk,dark,glue], 100, independent: false)
     assert win <= 10.00, "Get a simulated win with only the positive expectation results"
-    {:ok, win} = sim_win([chalk,stalk,dark,glue], 100, [independent: false])
+    {:ok, win} = sim_win([chalk,stalk,dark,glue], 100, independent: false)
     assert win >= 10.00, "But a larger one when we add in the negative EV but still bettable"
 
     biased_coin = [ {"heads", [prob: 0.499], [eu: 2.00]},
                     {"tails", [prob: 0.501], [eu: 2.00]}
                   ]
-    {:ok, win} = sim_win(biased_coin, 1000, [bankroll: 100_000, independent: false])
+    {:ok, win} = sim_win(biased_coin, 1000, bankroll: 100_000, independent: false)
     assert win >= 10.00, "We can make some money flipping biased coins."
   end
 
