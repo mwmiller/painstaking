@@ -113,8 +113,10 @@ defmodule PainStaking do
   @spec kelly_fraction(edge, float | nil) :: float
   defp kelly_fraction({_,p,o}, rr) do
     odds = extract_price_value(o, :eu)
-    if odds == 0 do 0
-    else if rr, do: extract_price_value(p, :prob) - (rr/odds), else: (extract_price_value(p, :prob)*odds - 1)/(odds - 1)
+    case {odds,rr} do
+      {0, _}       -> 0
+      {_, nil}     -> (extract_price_value(p, :prob)*odds - 1)/(odds - 1)
+      _            -> extract_price_value(p, :prob) - (rr/odds)
     end
   end
 
@@ -161,14 +163,20 @@ defmodule PainStaking do
   @spec zero_except(non_neg_integer, [tuple], tuple) :: tuple
   defp zero_except(_,[],acc), do: acc
   defp zero_except(n,[{v,p}|t],{vals,j}) do
-    {newval, newprob} = if Enum.count(vals) == n, do: {v,p}, else: {0,0}
+    {newval, newprob} = case Enum.count(vals) do
+                          ^n  -> {v,p}
+                          _   -> {0,0}
+                        end
     zero_except(n,t,{Enum.into([newval], vals), j + newprob})
   end
 
   @spec pick_combo(non_neg_integer, [tuple], tuple) :: tuple
   defp pick_combo(_, [], acc), do: acc
   defp pick_combo(n,[{v,p}|t],{vals,j}) do
-    {newval, newprob} = if ((n >>> Enum.count(vals) &&& 1)) != 0, do: {v,p}, else: {0,1-p}
+    {newval, newprob} = case ((n >>> Enum.count(vals) &&& 1)) do
+                          0   -> {v,p}
+                          _   -> {0,1-p}
+                        end
     pick_combo(n,t,{Enum.into([newval], vals), j * newprob})
   end
 
