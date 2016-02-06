@@ -161,30 +161,30 @@ defmodule PainStaking do
   end
 
   @spec zero_except(non_neg_integer, [tuple], tuple) :: tuple
-  defp zero_except(_,[],acc), do: acc
+  defp zero_except(_,[],{v,p}), do: { Enum.reverse(v), p }
   defp zero_except(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = case Enum.count(vals) do
                           ^n  -> {v,p}
                           _   -> {0,0}
                         end
-    zero_except(n,t,{Enum.into([newval], vals), j + newprob})
+    zero_except(n,t,{[newval|vals], j + newprob})
   end
 
   @spec pick_combo(non_neg_integer, [tuple], tuple) :: tuple
-  defp pick_combo(_, [], acc), do: acc
+  defp pick_combo(_, [], {v,p}), do: { Enum.reverse(v), p }
   defp pick_combo(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = case ((n >>> Enum.count(vals) &&& 1)) do
                           0   -> {v,p}
                           _   -> {0,1-p}
                         end
-    pick_combo(n,t,{Enum.into([newval], vals), j * newprob})
+    pick_combo(n,t,{[newval|vals], j * newprob})
   end
 
   @spec map_prob([tuple], list, number) :: [tuple]
-  defp map_prob([], acc, _), do: acc
+  defp map_prob([], acc, _), do: Enum.reverse acc
   defp map_prob([{l,p}|t], acc, j) do
     limit = j+p
-    map_prob(t, Enum.into([{l, limit}], acc), limit)
+    map_prob(t, [{l, limit}|acc], limit)
   end
 
   @doc """
