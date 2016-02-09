@@ -124,24 +124,26 @@ defmodule PainStaking do
   How much to stake in an arbitrage situation.
 
   The `bankroll` option can be used to set the maximum amount available to
-  bet on these outcomes.  The smaller the arbitrage, the closer your outlay will be to this number.
+  bet on these outcomes.
 
   The payouts may not all be exactly the same because of rounding to the
   nearest cent.  This may cause a slight variation in the expected profit.
   """
   @spec arb([edge], staking_options) :: {:ok, [tagged_number], float} | {:error, String.t}
   def arb(edges, opts \\ []) do
-    {max_outlay, independent} = extract_staking_options(opts)
-    if arb_exists?(edges) and not independent do
-      sizes = edges |> Enum.map(fn({d,_,o}) -> {d, size_to_collect(o, max_outlay)} end)
-      {:ok, sizes, sizes |> Enum.reduce(max_outlay, fn({_,x},acc) -> acc - x end) |> Float.round(2)}
+    {bankroll, independent} = extract_staking_options(opts)
+    all_prob = all_prob(edges)
+    if Enum.count(edges) > 1 and not independent and all_prob < 1 do
+      to_pay = bankroll/all_prob |> Float.round(2)
+      sizes = edges |> Enum.map(fn({d,_,o}) -> {d, size_to_collect(o, to_pay)} end)
+      {:ok, sizes, sizes |> Enum.reduce(to_pay, fn({_,x},acc) -> acc - x end) |> Float.round(2)}
     else
       {:error, "No arbitrage exists for these events."}
     end
   end
 
-  @spec arb_exists?([edge]) :: boolean
-  defp arb_exists?(edges), do: Enum.count(edges) > 1 and edges |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end) < 1
+  @spec all_prob([edge]) :: boolean
+  defp all_prob(edges), do: edges |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end)
 
   @spec size_to_collect(wager_price, number) :: float
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)

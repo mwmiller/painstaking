@@ -38,7 +38,7 @@ iex> PainStaking.arb([{"lions", [prob: 0.55], [us: "+100"]}, {"bears", [prob: 0.
 iex> PainStaking.arb([{"lions", [prob: 0.55], [us: "+100"]}, {"bears", [prob: 0.45], [eu: 2.10]}], independent: true)
 {:error, "No arbitrage exists for these events."} # Arbitrage only on different results for same event
 iex> PainStaking.arb([{"lions", [prob: 0.55], [us: "+100"]}, {"bears", [prob: 0.45], [eu: 2.10]}], bankroll: 1_000)
-{:ok, [{"lions", 500.0}, {"bears", 476.19}], 23.81} # Arb available, bet on each, net 23.81 regardless of outcome
+{:ok, [{"lions", 512.20}, {"bears", 487.80}], 24.39} # Arb available, bet on each, net 24.39 regardless of outcome
 
 iex> PainStaking.sim_win([{"big winner", [prob: 0.80], [us: -110]}])
 {:ok, 30.00} # Or something close, depending on how the sim works out.

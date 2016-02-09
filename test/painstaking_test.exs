@@ -51,8 +51,8 @@ defmodule PainStakingTest do
     no_arb_error = {:error, "No arbitrage exists for these events."}
     assert arb([{"lions", [prob: 0.85], [us: "-110"]}]) ==  no_arb_error, "No arbitrage exists on a single, even positive EV  outcome"
     assert arb([{"lions", [prob: 0.85], [us: "-110"]}, {"bears", [prob: 0.15], [us: "-110"]}]) ==  no_arb_error, "Standard US odds exhibit no arbitrage"
-    assert arb([{"lions", [prob: 0.85], [us: "-107"]}, {"bears", [prob: 0.15], [us: "+110"]}]) ==  {:ok, [{"lions", 51.69}, {"bears", 47.62}], 0.69}, "Can make a small profit on small arbitrage"
-    assert arb([{"nadal", [prob: 0.50], [us: "-161"]}, {"murray", [prob: 0.25], [us: "+350"]}, {"becker", [prob: 0.01],  [us: "+632"]}]) ==  {:ok, [{"nadal", 61.69}, {"murray", 22.22}, {"becker", 13.66}], 2.43}, "Multi-ways are harder to spot so may exhibit more profit"
+    assert arb([{"lions", [prob: 0.85], [us: "-107"]}, {"bears", [prob: 0.15], [us: "+110"]}]) ==  {:ok, [{"lions", 52.05}, {"bears", 47.95}], 0.69}, "Can make a small profit on small arbitrage"
+    assert arb([{"nadal", [prob: 0.50], [us: "-161"]}, {"murray", [prob: 0.25], [us: "+350"]}, {"becker", [prob: 0.01],  [us: "+632"]}]) ==  {:ok, [{"nadal", 63.22}, {"murray", 22.78}, {"becker", 14.00}], 2.49}, "Multi-ways are harder to spot so may exhibit more profit"
   end
 
   test "simultaneous independent sim_win" do
