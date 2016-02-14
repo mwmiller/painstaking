@@ -49,6 +49,7 @@ defmodule PainStakingTest do
 
   test "simple arb" do
     no_arb_error = {:error, "No arbitrage exists for these events."}
+
     assert arb([{"lions", [prob: 0.85], [us: "-110"]}]) ==  no_arb_error, "No arbitrage exists on a single, even positive EV  outcome"
     assert arb([{"lions", [prob: 0.85], [us: "-110"]}, {"bears", [prob: 0.15], [us: "-110"]}]) ==  no_arb_error, "Standard US odds exhibit no arbitrage"
     assert arb([{"lions", [prob: 0.85], [us: "-107"]}, {"bears", [prob: 0.15], [us: "+110"]}]) ==  {:ok, [{"lions", 52.05}, {"bears", 47.95}], 0.69}, "Can make a small profit on small arbitrage"
@@ -78,21 +79,24 @@ defmodule PainStakingTest do
 
     {:ok, win} = sim_win([chalk,dark,glue], 100, independent: false)
     assert win <= 10.00, "Get a simulated win with only the positive expectation results"
+
     {:ok, win} = sim_win([chalk,stalk,dark,glue], 100, independent: false)
     assert win >= 10.00, "But a larger one when we add in the negative EV but still bettable"
 
     biased_coin = [ {"heads", [prob: 0.499], [eu: 2.00]},
                     {"tails", [prob: 0.501], [eu: 2.00]}
                   ]
+
     {:ok, win} = sim_win(biased_coin, 1000, bankroll: 100_000, independent: false)
     assert win >= 10.00, "We can make some money flipping biased coins."
   end
 
   test "simple ev" do
-    neg_ev = {"no edge", [prob: "0.50"], [us: -110]}
-    pos_ev = {"small edge", [prob: "0.55"], [us: -110]}
+    neg_ev = {"neg edge", [prob: "0.49"], [us: "+100"]}
+    no_ev  = {"no edge", [prob: "0.50"], [us: "+100"]}
+    pos_ev = {"pos edge", [prob: "0.51"], [us: "+100"]}
 
-    assert ev([neg_ev, pos_ev]) == {:ok, [{"no edge", 95.45454545454545}, {"small edge", 105.00}]}, "Difference from 100 is the expected win"
+    assert ev([neg_ev, no_ev, pos_ev]) == {:ok, [{"neg edge", 98.0}, {"no edge", 100.0}, {"pos edge", 102.0}]}, "Difference from 100 is the expected win"
   end
 
 end
