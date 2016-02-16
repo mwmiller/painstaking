@@ -111,12 +111,11 @@ defmodule PainStaking do
   end
 
   @spec kelly_fraction(edge, float | nil) :: float
-  defp kelly_fraction({_,p,o}, rr) do
-    odds = extract_price_value(o, :eu)
-    case {odds,rr} do
-      {0, _}       -> 0
-      {_, nil}     -> (extract_price_value(p, :prob)*odds - 1)/(odds - 1)
-      _            -> extract_price_value(p, :prob) - (rr/odds)
+  defp kelly_fraction({_,fair,offered}, rr) do
+    case {extract_price_value(offered, :eu),extract_price_value(fair, :prob),rr} do
+      {0, _, _}    -> 0
+      {o, p, nil}  -> (p*o - 1)/(o - 1)
+      {o, p, r}    -> p - (r/o)
     end
   end
 
@@ -142,7 +141,7 @@ defmodule PainStaking do
     end
   end
 
-  @spec all_prob([edge]) :: boolean
+  @spec all_prob([edge]) :: float
   defp all_prob(edges), do: edges |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end)
 
   @spec size_to_collect(wager_price, number) :: float
@@ -152,14 +151,13 @@ defmodule PainStaking do
   @spec edge_cdf([edge], boolean) :: cdf
   defp edge_cdf(edges, independent) do
     payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
-    possibles = if independent do
-        last = :math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1
-        0..last |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end) |> map_prob([],0)
-      else
-        last = Enum.count(payoffs) - 1
-        0..last |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
-      end
-    possibles |> map_prob([], 0)
+    case independent do
+      true -> 0..(:math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1)
+              |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end)
+      false -> 0..(Enum.count(payoffs) - 1)
+              |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
+    end
+    |> map_prob([], 0)
   end
 
   @spec zero_except(non_neg_integer, [tuple], tuple) :: tuple
@@ -196,11 +194,11 @@ defmodule PainStaking do
   """
   @spec sim_win([edge], pos_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iterations \\ 100, opts \\ []) do
-    {_, independent } = extract_staking_options(opts)
-    sedges        = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
-    {:ok, wagers} = kelly(sedges, opts)
-    cdf           = edge_cdf(sedges, independent)
-    ev            = sample_ev(cdf, wagers, iterations)
+    {_, independent} = extract_staking_options(opts)
+    sedges           = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
+    {:ok, wagers}    = kelly(sedges, opts)
+    ev               = sedges |> edge_cdf(independent) |> sample_ev(wagers, iterations)
+
     {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
   end
 
@@ -217,13 +215,13 @@ defmodule PainStaking do
   """
   @spec ev([edge], staking_options) :: {:ok, [tagged_number]}
   def ev(edges, opts \\ []) do
-    {mult, _ } = extract_staking_options(opts)
+    {mult, _} = extract_staking_options(opts)
     {:ok, ev_loop(edges,mult,[])}
   end
 
   @spec ev_loop([edge], float, list) :: [tagged_number]
   defp ev_loop([],_, acc), do: Enum.reverse acc
-  defp ev_loop([{d,p,o}|t],m, acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
+  defp ev_loop([{d,p,o}|t],m,acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
 
   @spec single_ev(edge, number) :: float
   defp single_ev({_,p,o},m), do: m * extract_price_value(p, :prob) * extract_price_value(o, :eu)
