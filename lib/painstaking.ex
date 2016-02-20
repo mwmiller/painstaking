@@ -84,13 +84,13 @@ defmodule PainStaking do
 
   @spec resize_fracs([tuple]) :: [tuple]
   defp resize_fracs(fracs) do
-    winners = Enum.filter(fracs, fn({_,x}) -> x > 0 end)
-    total = winners |> Enum.reduce(0, fn({_,x}, acc) -> x+acc end)
+    winners = Enum.filter(fracs, fn({_d,x}) -> x > 0 end)
+    total = winners |> Enum.reduce(0, fn({_d,x}, acc) -> x+acc end)
     if (total > 1), do: winners |> Enum.map(fn({d,x}) -> {d, x/total} end), else: winners
   end
 
   @spec fracs_display([tuple], number, list) :: [tagged_number]
-  defp fracs_display([], _,acc), do: Enum.reverse acc
+  defp fracs_display([],_b,acc), do: Enum.reverse acc
   defp fracs_display([{d,f}|t],b, acc), do: fracs_display(t,b,[{d, Float.round(f*b,2)}|acc])
 
   # The "reserve rate" above which any additions to the set must be
@@ -98,7 +98,7 @@ defmodule PainStaking do
   @spec rr([edge]) :: float
   defp rr([]), do: 1.0 # First must merely be positive expectation
   defp rr(included) do
-    {prob_factor, pay_factor} = included |> Enum.reduce({1,1}, fn({_,p,o}, {x,y}) ->
+    {prob_factor, pay_factor} = included |> Enum.reduce({1,1}, fn({_d,p,o}, {x,y}) ->
                                     {x - extract_price_value(p,:prob), y - 1/extract_price_value(o,:eu)}
                                     end)
     prob_factor /  pay_factor
@@ -106,14 +106,14 @@ defmodule PainStaking do
 
   @spec extract_price_value(wager_price, atom) :: float
   defp extract_price_value(kwl, into) do
-    [type|_] = Keyword.keys(kwl)
+    [type|_none] = Keyword.keys(kwl)
     Exoddic.convert(kwl[type], from: type, to: into, for_display: false)
   end
 
   @spec kelly_fraction(edge, float | nil) :: float
   defp kelly_fraction({_,fair,offered}, rr) do
     case {extract_price_value(offered, :eu),extract_price_value(fair, :prob),rr} do
-      {0, _, _}    -> 0
+      {0, _p, _r}  -> 0
       {o, p, nil}  -> (p*o - 1)/(o - 1)
       {o, p, r}    -> p - (r/o)
     end
@@ -134,15 +134,15 @@ defmodule PainStaking do
     all_prob = all_prob(edges)
     if Enum.count(edges) > 1 and not independent and all_prob < 1 do
       to_pay = bankroll/all_prob |> Float.round(2)
-      sizes = edges |> Enum.map(fn({d,_,o}) -> {d, size_to_collect(o, to_pay)} end)
-      {:ok, sizes, sizes |> Enum.reduce(to_pay, fn({_,x},acc) -> acc - x end) |> Float.round(2)}
+      sizes = edges |> Enum.map(fn({d,_p,o}) -> {d, size_to_collect(o, to_pay)} end)
+      {:ok, sizes, sizes |> Enum.reduce(to_pay, fn({_d,x},acc) -> acc - x end) |> Float.round(2)}
     else
       {:error, "No arbitrage exists for these events."}
     end
   end
 
   @spec all_prob([edge]) :: float
-  defp all_prob(edges), do: edges |> Enum.reduce(0,fn({_,_,o}, acc) -> extract_price_value(o,:prob)+acc end)
+  defp all_prob(edges), do: edges |> Enum.reduce(0,fn({_d,_p,o}, acc) -> extract_price_value(o,:prob)+acc end)
 
   @spec size_to_collect(wager_price, number) :: float
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
@@ -150,7 +150,7 @@ defmodule PainStaking do
   @typep cdf :: [{[float], float}]
   @spec edge_cdf([edge], boolean) :: cdf
   defp edge_cdf(edges, independent) do
-    payoffs = edges |> Enum.map(fn({_,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
+    payoffs = edges |> Enum.map(fn({_d,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
     case independent do
       true -> 0..(:math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1)
               |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end)
@@ -161,7 +161,7 @@ defmodule PainStaking do
   end
 
   @spec zero_except(non_neg_integer, [tuple], tuple) :: tuple
-  defp zero_except(_,[],{v,p}), do: { Enum.reverse(v), p }
+  defp zero_except(_n,[],{v,p}), do: { Enum.reverse(v), p }
   defp zero_except(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = case Enum.count(vals) do
                           ^n  -> {v,p}
@@ -171,7 +171,7 @@ defmodule PainStaking do
   end
 
   @spec pick_combo(non_neg_integer, [tuple], tuple) :: tuple
-  defp pick_combo(_, [], {v,p}), do: { Enum.reverse(v), p }
+  defp pick_combo(_n, [], {v,p}), do: { Enum.reverse(v), p }
   defp pick_combo(n,[{v,p}|t],{vals,j}) do
     {newval, newprob} = case ((n >>> Enum.count(vals) &&& 1)) do
                           0   -> {v,p}
@@ -181,7 +181,7 @@ defmodule PainStaking do
   end
 
   @spec map_prob([tuple], list, number) :: [tuple]
-  defp map_prob([], acc, _), do: Enum.reverse acc
+  defp map_prob([], acc, _j), do: Enum.reverse acc
   defp map_prob([{l,p}|t], acc, j) do
     limit = j+p
     map_prob(t, [{l, limit}|acc], limit)
@@ -194,12 +194,12 @@ defmodule PainStaking do
   """
   @spec sim_win([edge], pos_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iterations \\ 100, opts \\ []) do
-    {_, independent} = extract_staking_options(opts)
+    {_roll, independent} = extract_staking_options(opts)
     sedges           = edges |> Enum.sort_by(fn(x) -> single_ev(x,1) end, &>=/2)
     {:ok, wagers}    = kelly(sedges, opts)
     ev               = sedges |> edge_cdf(independent) |> sample_ev(wagers, iterations)
 
-    {:ok, ev - (wagers |> Enum.map(fn({_,a}) -> a end) |> Enum.sum) |> Float.round(2)}
+    {:ok, ev - (wagers |> Enum.map(fn({_d,a}) -> a end) |> Enum.sum) |> Float.round(2)}
   end
 
   @spec sample_ev(cdf, [tagged_number], pos_integer) :: float
@@ -215,39 +215,39 @@ defmodule PainStaking do
   """
   @spec ev([edge], staking_options) :: {:ok, [tagged_number]}
   def ev(edges, opts \\ []) do
-    {mult, _} = extract_staking_options(opts)
+    {mult, _ind} = extract_staking_options(opts)
     {:ok, ev_loop(edges,mult,[])}
   end
 
   @spec ev_loop([edge], float, list) :: [tagged_number]
-  defp ev_loop([],_, acc), do: Enum.reverse acc
+  defp ev_loop([],_m,acc), do: Enum.reverse acc
   defp ev_loop([{d,p,o}|t],m,acc), do: ev_loop(t, m, [{d, single_ev({d,p,o},m)}|acc])
 
   @spec single_ev(edge, number) :: float
   defp single_ev({_,p,o},m), do: m * extract_price_value(p, :prob) * extract_price_value(o, :eu)
 
   @spec gather_results(cdf, non_neg_integer, list) ::  list
-  defp gather_results(_, 0, acc), do: Enum.reverse acc
-  defp gather_results(cdf, n, acc), do: gather_results(cdf, n-1, [sample_result(cdf)|acc])
+  defp gather_results(_cdf,0,acc), do: Enum.reverse acc
+  defp gather_results(cdf,n,acc), do: gather_results(cdf, n-1, [sample_result(cdf)|acc])
 
   @spec add_result_row(cdf, [tagged_number], float) :: float
-  defp add_result_row(_,[],acc), do: acc
+  defp add_result_row(_list,[],acc), do: acc
   defp add_result_row([h|t],[{_,f}|r],acc), do: add_result_row(t,r,h*f+acc)
 
   @spec sample_result(cdf) :: [number]
   defp sample_result(cdf) do
     pick = :random.uniform
-    case cdf |> Enum.split_while(fn({_,plim}) -> pick > plim end) do
-      {_, [{r,_}|_]}  -> r
-      _               -> proper_loss(cdf)
+    case cdf |> Enum.split_while(fn({_d,plim}) -> pick > plim end) do
+      {_d, [{r,_l}|_rest]}  -> r
+      _                     -> proper_loss(cdf)
     end
   end
 
   @spec proper_loss(cdf) :: [number]
-  defp proper_loss([{list,_}|_]), do: zeroed(list,[])
+  defp proper_loss([{list,_lim}|_rest]), do: zeroed(list,[])
 
   @spec zeroed(list, [0]) :: [0]
   defp zeroed([], acc), do: acc
-  defp zeroed([_|t], acc), do: zeroed(t, [0|acc])
+  defp zeroed([_h|t], acc), do: zeroed(t, [0|acc])
 
 end
