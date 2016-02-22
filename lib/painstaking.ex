@@ -113,9 +113,9 @@ defmodule PainStaking do
   @spec kelly_fraction(edge, float | nil) :: float
   defp kelly_fraction({_,fair,offered}, rr) do
     case {extract_price_value(offered, :eu),extract_price_value(fair, :prob),rr} do
-      {0, _p, _r}  -> 0
-      {o, p, nil}  -> (p*o - 1)/(o - 1)
-      {o, p, r}    -> p - (r/o)
+      {0.0, _p, _r} -> 0.0
+      {o, p, nil}   -> (p*o - 1)/(o - 1)
+      {o, p, r}     -> p - (r/o)
     end
   end
 
@@ -144,7 +144,7 @@ defmodule PainStaking do
   @spec all_offers_prob([edge]) :: float
   defp all_offers_prob(edges), do: edges |> Enum.reduce(0,fn({_d,_p,o}, acc) -> extract_price_value(o,:prob)+acc end)
 
-  @spec size_to_collect(wager_price, number) :: float
+  @spec size_to_collect(wager_price, float) :: float
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
 
   @typep cdf :: [{[float], float}]
@@ -180,7 +180,7 @@ defmodule PainStaking do
     pick_combo(n,t,{[newval|vals], j * newprob})
   end
 
-  @spec map_prob([tuple], list, number) :: [tuple]
+  @spec map_prob([{number,float}], list, number) :: [{[number],number}]
   defp map_prob([], acc, _j), do: Enum.reverse acc
   defp map_prob([{l,p}|t], acc, j) do
     limit = j+p
