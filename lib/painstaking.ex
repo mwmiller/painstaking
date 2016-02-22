@@ -131,9 +131,9 @@ defmodule PainStaking do
   @spec arb([edge], staking_options) :: {:ok, [tagged_number], float} | {:error, String.t}
   def arb(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
-    all_prob = all_prob(edges)
-    if Enum.count(edges) > 1 and not independent and all_prob < 1 do
-      to_pay = bankroll/all_prob |> Float.round(2)
+    all_offers_prob = all_offers_prob(edges)
+    if Enum.count(edges) > 1 and not independent and all_offers_prob < 1 do
+      to_pay = bankroll/all_offers_prob |> Float.round(2)
       sizes = edges |> Enum.map(fn({d,_p,o}) -> {d, size_to_collect(o, to_pay)} end)
       {:ok, sizes, sizes |> Enum.reduce(to_pay, fn({_d,x},acc) -> acc - x end) |> Float.round(2)}
     else
@@ -141,8 +141,8 @@ defmodule PainStaking do
     end
   end
 
-  @spec all_prob([edge]) :: float
-  defp all_prob(edges), do: edges |> Enum.reduce(0,fn({_d,_p,o}, acc) -> extract_price_value(o,:prob)+acc end)
+  @spec all_offers_prob([edge]) :: float
+  defp all_offers_prob(edges), do: edges |> Enum.reduce(0,fn({_d,_p,o}, acc) -> extract_price_value(o,:prob)+acc end)
 
   @spec size_to_collect(wager_price, number) :: float
   defp size_to_collect(offer, goal), do: (goal / (offer |> extract_price_value(:eu))) |> Float.round(2)
