@@ -24,8 +24,7 @@ defmodule PainStaking do
   @typedoc """
   A tuple which represents a supposed advantage wagering situation.
 
-  The elements, in order:
-  - an edge description
+  - a proposition description
   - the estimate of the fair (or actual) odds of winning
   - the odds offered by the counter-party to the wager
   """
@@ -39,7 +38,6 @@ defmodule PainStaking do
   @typedoc  """
   A keyword list which configures optional parameters for staking calculators
 
-  The keywords are:
   - `bankroll`: the total amount available for wagering; defaults to `100`
   - `independent`: independent or mutually-exclusive simultaneous events; defaults to `false`
   """
@@ -190,7 +188,7 @@ defmodule PainStaking do
   @doc """
   Simulate a repeated edge situation for the average amount won
 
-  `iterations` controls the number of simulation iterations run
+  `iterations` sets the number of simulated outcomes
   """
   @spec sim_win([edge], pos_integer, staking_options) :: {:ok, float} | {:error, String.t}
   def sim_win(edges, iterations \\ 100, opts \\ []) do
@@ -211,7 +209,7 @@ defmodule PainStaking do
   @doc """
   The mathematical expectations for a list of supposed edges
 
-  A losing proposition will have an EV below the supplied `bankroll` option
+  A losing proposition will have an EV below the `bankroll`
   """
   @spec ev([edge], staking_options) :: {:ok, [tagged_number]}
   def ev(edges, opts \\ []) do
