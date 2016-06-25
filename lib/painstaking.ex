@@ -150,7 +150,7 @@ defmodule PainStaking do
   defp edge_cdf(edges, independent) do
     payoffs = edges |> Enum.map(fn({_d,p,o}) -> {extract_price_value(o, :eu), extract_price_value(p, :prob)} end)
     case independent do
-      true -> 0..(:math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> - 1)
+      true -> 0..(:math.pow(2, Enum.count(payoffs)) |> Float.to_string([decimals: 0]) |> String.to_integer |> Kernel.-(1))
               |> Enum.map(fn(x) -> pick_combo(x, payoffs, {[],1}) end)
       false -> 0..(Enum.count(payoffs) - 1)
               |> Enum.map(fn(x) -> zero_except(x, payoffs, {[],0}) end)
