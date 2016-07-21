@@ -234,7 +234,7 @@ defmodule PainStaking do
 
   @spec sample_result(cdf) :: [number]
   defp sample_result(cdf) do
-    pick = :random.uniform
+    pick = :rand.uniform
     case cdf |> Enum.split_while(fn({_d,plim}) -> pick > plim end) do
       {_d, [{r,_l}|_rest]}  -> r
       _                     -> proper_loss(cdf)
