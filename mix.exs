@@ -3,15 +3,15 @@ defmodule PainStaking.Mixfile do
 
   def project do
     [app: :painstaking,
-     version: "0.5.11",
-     elixir: "~> 1.3",
+     version: "0.5.12",
+     elixir: "~> 1.4",
      name: "PainStaking",
      source_url: "https://github.com/mwmiller/painstaking",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     description: description,
-     package: package,
-     deps: deps]
+     description: description(),
+     package: package(),
+     deps: deps()]
   end
 
   def application do
