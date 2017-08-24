@@ -3,7 +3,7 @@ defmodule PainStaking.Mixfile do
 
   def project do
     [app: :painstaking,
-     version: "0.5.12",
+     version: "1.0.0",
      elixir: "~> 1.4",
      name: "PainStaking",
      source_url: "https://github.com/mwmiller/painstaking",
@@ -23,6 +23,7 @@ defmodule PainStaking.Mixfile do
       {:earmark, "~> 1.0", only: :dev},
       {:ex_doc, "~> 0.14", only: :dev},
       {:exoddic, "~> 1.3"},
+      {:credo, "~> 0.7", only: [:dev, :test]},
     ]
   end
 
