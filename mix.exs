@@ -2,16 +2,18 @@ defmodule PainStaking.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :painstaking,
-     version: "1.0.0",
-     elixir: "~> 1.4",
-     name: "PainStaking",
-     source_url: "https://github.com/mwmiller/painstaking",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     description: description(),
-     package: package(),
-     deps: deps()]
+    [
+      app: :painstaking,
+      version: "1.0.0",
+      elixir: "~> 1.4",
+      name: "PainStaking",
+      source_url: "https://github.com/mwmiller/painstaking",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      description: description(),
+      package: package(),
+      deps: deps()
+    ]
   end
 
   def application do
@@ -23,7 +25,7 @@ defmodule PainStaking.Mixfile do
       {:earmark, "~> 1.0", only: :dev},
       {:ex_doc, "~> 0.14", only: :dev},
       {:exoddic, "~> 1.3"},
-      {:credo, "~> 0.7", only: [:dev, :test]},
+      {:credo, "~> 0.7", only: [:dev, :test]}
     ]
   end
 
@@ -35,11 +37,10 @@ defmodule PainStaking.Mixfile do
 
   defp package do
     [
-     files: ["lib", "mix.exs", "README*", "LICENSE*", ],
-     maintainers: ["Matt Miller"],
-     licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/mwmiller/painstaking",}
+      files: ["lib", "mix.exs", "README*", "LICENSE*"],
+      maintainers: ["Matt Miller"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/mwmiller/painstaking"}
     ]
   end
-
 end
