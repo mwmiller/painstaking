@@ -22,10 +22,9 @@ defmodule PainStaking.Mixfile do
 
   defp deps do
     [
-      {:earmark, "~> 1.0", only: :dev},
-      {:ex_doc, "~> 0.14", only: :dev},
+      {:earmark, "~> 1.4", only: :dev},
+      {:ex_doc, "~> 0.23", only: :dev},
       {:exoddic, "~> 1.3"},
-      {:credo, "~> 1.0", only: [:dev, :test]}
     ]
   end
 
