@@ -1,6 +1,6 @@
 defmodule PainStaking do
   require Exoddic
-  use Bitwise
+  import Bitwise
 
   @moduledoc """
   Calculate stakes in advantage betting situations
