@@ -130,7 +130,8 @@ defmodule PainStaking do
   @spec kelly_fraction(edge, float | nil) :: float
   defp kelly_fraction({_, fair, offered}, rr) do
     case {extract_price_value(offered, :eu), extract_price_value(fair, :prob), rr} do
-      {0.0, _p, _r} -> 0.0
+      {+0.0, _p, _r} -> 0.0
+      {-0.0, _p, _r} -> 0.0
       {o, p, nil} -> (p * o - 1) / (o - 1)
       {o, p, r} -> p - r / o
     end
@@ -246,7 +247,8 @@ defmodule PainStaking do
   @spec sample_ev(cdf, [tagged_number], pos_integer) :: float
   defp sample_ev(cdf, fracs, iters) do
     total =
-      cdf |> gather_results(iters, [])
+      cdf
+      |> gather_results(iters, [])
       |> Enum.reduce(0, fn x, a -> add_result_row(x, fracs, a) end)
 
     total / iters
