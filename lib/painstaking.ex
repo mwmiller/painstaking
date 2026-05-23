@@ -49,6 +49,35 @@ defmodule PainStaking do
   end
 
   @doc """
+  Combine a list of independent edges into a single parlay edge.
+
+  The fair probability of the parlay is the product of individual probabilities.
+  The offered decimal (EU) odds are the product of individual decimal odds.
+
+  ## Examples
+
+      iex> leg1 = {"Lions", [prob: 0.5], [eu: 2.0]}
+      iex> leg2 = {"Bears", [prob: 0.5], [eu: 2.0]}
+      iex> PainStaking.parlay([leg1, leg2])
+      {"Lions + Bears", [prob: 0.25], [eu: 4.0]}
+
+  """
+  @spec parlay([edge], String.t() | nil) :: edge
+  def parlay(edges, description \\ nil) do
+    {fair_prob, offered_eu} =
+      edges
+      |> Enum.reduce({1.0, 1.0}, fn {_d, p, o}, {prob_acc, odds_acc} ->
+        {prob_acc * extract_price_value(p, :prob), odds_acc * extract_price_value(o, :eu)}
+      end)
+
+    desc =
+      description ||
+        edges |> Enum.map(fn {d, _p, _o} -> d end) |> Enum.join(" + ")
+
+    {desc, [prob: fair_prob], [eu: offered_eu]}
+  end
+
+  @doc """
   How much to stake on advantage situations based on the Kelly Criterion
 
   The output list may be in a different order or have fewer elements than the input list.
@@ -60,26 +89,34 @@ defmodule PainStaking do
   def kelly(edges, opts \\ []) do
     {bankroll, independent} = extract_staking_options(opts)
 
-    {rr, set} =
-      if not independent or Enum.count(edges) == 1 do
-        optimal_set =
-          edges |> Enum.sort_by(fn x -> single_ev(x, 1) end, &>=/2) |> pick_optimal_set([])
+    if independent and Enum.count(edges) > 1 do
+      candidates = PainStaking.Combinations.generate(edges, [1])
 
-        {rr(optimal_set), optimal_set}
-      else
-        # More work to be done here.
-        {nil, edges}
+      case PainStaking.Combinations.kelly(edges, candidates, bankroll: bankroll) do
+        {:ok, []} -> {:error, "No suitable positive expectation edges found."}
+        {:ok, results} -> {:ok, results}
       end
+    else
+      {rr, set} =
+        if not independent or Enum.count(edges) == 1 do
+          optimal_set =
+            edges |> Enum.sort_by(fn x -> single_ev(x, 1) end, &>=/2) |> pick_optimal_set([])
 
-    pretty_sizes =
-      set
-      |> Enum.map(fn {d, p, o} -> {d, kelly_fraction({d, p, o}, rr)} end)
-      |> resize_fracs
-      |> fracs_display(bankroll, [])
+          {rr(optimal_set), optimal_set}
+        else
+          {nil, edges}
+        end
 
-    case Enum.count(pretty_sizes) do
-      0 -> {:error, "No suitable positive expectation edges found."}
-      _ -> {:ok, pretty_sizes}
+      pretty_sizes =
+        set
+        |> Enum.map(fn {d, p, o} -> {d, kelly_fraction({d, p, o}, rr)} end)
+        |> resize_fracs
+        |> fracs_display(bankroll, [])
+
+      case Enum.count(pretty_sizes) do
+        0 -> {:error, "No suitable positive expectation edges found."}
+        _ -> {:ok, pretty_sizes}
+      end
     end
   end
 
@@ -122,7 +159,7 @@ defmodule PainStaking do
   end
 
   @spec extract_price_value(wager_price, atom) :: float
-  defp extract_price_value(kwl, into) do
+  def extract_price_value(kwl, into) do
     [type | _none] = Keyword.keys(kwl)
     Exoddic.convert(kwl[type], from: type, to: into, for_display: false)
   end
@@ -170,7 +207,7 @@ defmodule PainStaking do
 
   @typep cdf :: [{[float], float}]
   @spec edge_cdf([edge], boolean) :: cdf
-  defp edge_cdf(edges, independent) do
+  def edge_cdf(edges, independent) do
     payoffs =
       edges
       |> Enum.map(fn {_d, p, o} ->

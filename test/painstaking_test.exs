@@ -61,18 +61,18 @@ defmodule PainStakingTest do
     assert kelly(events, independent: true) ==
              {:ok,
               [
-                {"1", 11.67},
-                {"2", 6.0},
-                {"3", 4.67},
-                {"4", 3.4},
-                {"5", 3.13},
-                {"6", 2.67},
-                {"7", 2.67},
-                {"8", 2.39},
-                {"9", 2.25},
-                {"10", 2.1},
+                {"1", 11.45},
+                {"2", 5.76},
+                {"3", 4.49},
+                {"4", 3.28},
+                {"5", 3.02},
+                {"6", 2.57},
+                {"7", 2.57},
+                {"8", 2.3},
+                {"9", 2.17},
+                {"10", 2.02},
                 {"11", 0.1},
-                {"12", 0.14}
+                {"12", 0.13}
               ]},
            "Naive kelly sizing without algorithm"
   end
@@ -105,14 +105,14 @@ defmodule PainStakingTest do
     always_win = {"always win", [prob: 1], [us: -110]}
     always_lose = {"always lose", [roi: 0], [us: -110]}
 
-    {:ok, win} = sim_win([small_edge])
+    {:ok, win} = sim_win([small_edge], 10_000)
     assert win <= 1.00, "A small edge on a small bankroll cannot make a ton of money"
-    {:ok, win} = sim_win([unlikely, small_edge])
+    {:ok, win} = sim_win([unlikely, small_edge], 10_000)
     assert win <= 50.00, "Bigger variance when you include an unlikely result"
     assert sim_win([always_win], 1) == {:ok, 90.91}, "If the result is known, you get full value."
-    assert sim_win([always_win]) == {:ok, 90.91}, "Even when you repeat it many times"
+    assert sim_win([always_win], 10_000) == {:ok, 90.91}, "Even when you repeat it many times"
 
-    assert sim_win([always_win, always_lose], 100) == {:ok, 90.91},
+    assert sim_win([always_win, always_lose], 10_000) == {:ok, 90.91},
            "Same when you add one which cannot win"
   end
 
@@ -122,15 +122,15 @@ defmodule PainStakingTest do
     dark = {"dark", [prob: 0.04], [uk: "30/1"]}
     glue = {"glue", [prob: 0.01], [uk: "100/1"]}
 
-    {:ok, win} = sim_win([chalk, dark, glue], 100, independent: false)
+    {:ok, win} = sim_win([chalk, dark, glue], 10_000, independent: false)
     assert win > 0.00, "Get a simulated win with only the positive expectation results"
 
-    {:ok, win} = sim_win([chalk, stalk, dark, glue], 100, independent: false)
+    {:ok, win} = sim_win([chalk, stalk, dark, glue], 10_000, independent: false)
     assert win >= 10.00, "But a larger one when we add in the negative EV but still bettable"
 
     biased_coin = [{"heads", [prob: 0.495], [eu: 2.00]}, {"tails", [prob: 0.505], [eu: 2.00]}]
 
-    {:ok, win} = sim_win(biased_coin, 10000, bankroll: 100_000, independent: false)
+    {:ok, win} = sim_win(biased_coin, 100_000, bankroll: 100_000, independent: false)
     assert win > 0.00, "We can make some money flipping biased coins."
   end
 
