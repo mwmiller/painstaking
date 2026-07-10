@@ -1,5 +1,4 @@
 defmodule PainStaking do
-  require Exoddic
   import Bitwise
 
   @moduledoc """
@@ -217,11 +216,7 @@ defmodule PainStaking do
     vals =
       case independent do
         true ->
-          0..(2
-              |> :math.pow(Enum.count(payoffs))
-              |> :erlang.float_to_binary(decimals: 0)
-              |> String.to_integer()
-              |> Kernel.-(1))
+          0..((1 <<< Enum.count(payoffs)) - 1)
           |> Enum.map(fn x -> pick_combo(x, payoffs, {[], 1}) end)
 
         false ->

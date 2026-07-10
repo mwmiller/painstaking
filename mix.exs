@@ -4,7 +4,7 @@ defmodule PainStaking.Mixfile do
   def project do
     [
       app: :painstaking,
-      version: "1.1.0",
+      version: "1.2.0",
       elixir: "~> 1.7",
       name: "PainStaking",
       source_url: "https://github.com/mwmiller/painstaking",
